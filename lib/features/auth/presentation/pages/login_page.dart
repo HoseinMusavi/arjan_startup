@@ -120,10 +120,12 @@ class _LoginPageState extends State<LoginPage> {
                         Center(
                           child: Container(
                             padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
+                        // ... داخل build ...
+decoration: BoxDecoration(
+  color: primaryColor.withValues(alpha: 0.1), // تغییر از withOpacity به withValues
+  shape: BoxShape.circle,
+),
+// ...
                             child: Icon(
                               isOtpSent ? Icons.sms_outlined : Icons.restaurant_menu_rounded,
                               size: 60,

@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import 'legacy_interceptor.dart';
 
@@ -19,8 +18,8 @@ class DioClient {
           ),
         ) {
     _dio.interceptors.add(LogInterceptor(
-      requestBody: true, // نمایش بدنه درخواست
-      responseBody: true, // نمایش بدنه پاسخ (بسیار مهم)
+      requestBody: true,
+      responseBody: true,
       requestHeader: false,
       responseHeader: false,
       error: true,
@@ -28,6 +27,7 @@ class DioClient {
     _dio.interceptors.add(LegacyInterceptor());
   }
 
+  // ... بقیه کدها مثل قبل (بدون تغییر) ...
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     final Map<String, dynamic> params = queryParameters ?? {};
     params['api_key'] = AppConstants.apiKey;

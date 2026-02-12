@@ -20,7 +20,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    // تنظیم انیمیشن‌ها
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -49,16 +48,15 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
       create: (context) => getIt<SplashBloc>()..add(SplashStarted()),
       child: Scaffold(
         body: BlocConsumer<SplashBloc, SplashState>(
-          listener: (context, state) {
+          listener: (context, state) async {
             if (state is SplashSuccess) {
-              // تاخیر کوچک برای اینکه انیمیشن دیده شود
-              Future.delayed(const Duration(milliseconds: 2000), () {
-                if (mounted) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                  );
-                }
-              });
+              // اصلاح Async Gap با استفاده از await و چک کردن mounted
+              await Future.delayed(const Duration(milliseconds: 2000));
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              }
             }
           },
           builder: (context, state) {
@@ -72,7 +70,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     );
   }
 
-  // ویجت محتوای اصلی اسپلش (لوگو و لودینگ)
   Widget _buildSplashContent() {
     return Container(
       width: double.infinity,
@@ -82,14 +79,13 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.primaryColor, // نارنجی روشن
-            AppTheme.primaryDark,  // نارنجی تیره
+            AppTheme.primaryColor,
+            AppTheme.primaryDark,
           ],
         ),
       ),
       child: Stack(
         children: [
-          // وسط چین کردن لوگو و نام
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -105,14 +101,14 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1), // اصلاح شد
                             blurRadius: 20,
                             spreadRadius: 5,
                           )
                         ],
                       ),
                       child: const Icon(
-                        Icons.fastfood_rounded, // اینجا بعداً لوگوی خودت رو بگذار
+                        Icons.fastfood_rounded,
                         size: 80,
                         color: AppTheme.primaryColor,
                       ),
@@ -139,8 +135,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
               ],
             ),
           ),
-          
-          // نمایش نسخه برنامه در پایین صفحه
           const Positioned(
             bottom: 30,
             left: 0,
@@ -148,10 +142,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
             child: Center(
               child: Text(
                 "Version 1.0.0",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),
           ),
@@ -160,7 +151,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     );
   }
 
-  // ویجت نمایش خطا (در صورت قطعی اینترنت)
   Widget _buildErrorView(BuildContext context, String message) {
     return Container(
       color: Colors.white,
@@ -173,15 +163,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
           Text(
             "ارتباط برقرار نشد",
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              "لطفاً اتصال اینترنت خود را بررسی کنید و دوباره تلاش نمایید.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
           ),
           const SizedBox(height: 30),
           ElevatedButton.icon(
