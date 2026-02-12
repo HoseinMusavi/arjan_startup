@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'core/di/service_locator.dart';
-import 'features/splash/presentation/pages/splash_page.dart';
-import 'config/theme/app_theme.dart'; // ایمپورت جدید
+import 'config/theme/app_theme.dart';
+import 'config/routes/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // راه‌اندازی سرویس‌ها (DI)
   await setupServiceLocator();
+
   runApp(const MyApp());
 }
 
@@ -14,17 +17,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
+    // استفاده از متد router برای فعال‌سازی GoRouter
+    return MaterialApp.router(
       title: 'Arjan Startup',
-      builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.rtl, // راست‌چین سراسری
-          child: child!,
-        );
-      },
-      theme: AppTheme.lightTheme, // استفاده از تم جدید
-      home: const SplashPage(),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      
+      // تنظیمات GoRouter
+      routerConfig: AppRouter.router,
     );
   }
 }

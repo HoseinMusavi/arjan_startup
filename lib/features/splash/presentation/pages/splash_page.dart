@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../auth/presentation/pages/login_page.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../bloc/splash_bloc.dart';
 
@@ -50,12 +50,13 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         body: BlocConsumer<SplashBloc, SplashState>(
           listener: (context, state) async {
             if (state is SplashSuccess) {
-              // اصلاح Async Gap با استفاده از await و چک کردن mounted
+              // تاخیر کوتاه برای نمایش انیمیشن
               await Future.delayed(const Duration(milliseconds: 2000));
               if (mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                // هدایت به صفحه خانه.
+                // اگر کاربر توکن نداشته باشد، AppRouter خودکار او را به /login می‌فرستد.
+                // ignore: use_build_context_synchronously
+                context.go('/home');
               }
             }
           },
@@ -101,7 +102,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1), // اصلاح شد
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 20,
                             spreadRadius: 5,
                           )

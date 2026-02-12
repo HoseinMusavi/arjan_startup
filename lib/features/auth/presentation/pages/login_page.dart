@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
 import '../bloc/auth_bloc.dart';
-import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -57,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor; // رنگ نارنجی از تم
+    final primaryColor = theme.primaryColor;
 
     return BlocProvider(
       create: (context) => getIt<AuthBloc>(),
@@ -80,7 +80,7 @@ class _LoginPageState extends State<LoginPage> {
               setState(() {
                 _tempToken = state.tempToken;
               });
-              _startTimer(); // شروع تایمر به محض دریافت توکن
+              _startTimer();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('کد تایید ارسال شد'),
@@ -91,14 +91,15 @@ class _LoginPageState extends State<LoginPage> {
             }
 
             if (state is AuthSuccess) {
-               // اینجا بعداً نویگیشن به صفحه خانه قرار می‌گیرد
-               ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('خوش آمدید!'),
                   backgroundColor: Colors.green,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
+              // استفاده از go برای رفتن به خانه و پاک کردن پشته
+              context.go('/home');
             }
           },
           builder: (context, state) {
@@ -116,16 +117,13 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 40),
-                        // Logo / Icon
                         Center(
                           child: Container(
                             padding: const EdgeInsets.all(24),
-                        // ... داخل build ...
-decoration: BoxDecoration(
-  color: primaryColor.withValues(alpha: 0.1), // تغییر از withOpacity به withValues
-  shape: BoxShape.circle,
-),
-// ...
+                            decoration: BoxDecoration(
+                              color: primaryColor.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
                             child: Icon(
                               isOtpSent ? Icons.sms_outlined : Icons.restaurant_menu_rounded,
                               size: 60,
@@ -154,7 +152,6 @@ decoration: BoxDecoration(
                         ),
                         const SizedBox(height: 48),
 
-                        // Inputs
                         if (!isOtpSent)
                           _buildMobileInput(primaryColor),
                         
@@ -163,7 +160,6 @@ decoration: BoxDecoration(
 
                         const SizedBox(height: 32),
 
-                        // Action Button
                         SizedBox(
                           height: 54,
                           child: ElevatedButton(
@@ -194,7 +190,6 @@ decoration: BoxDecoration(
 
                         const SizedBox(height: 24),
 
-                        // Footer / Resend
                         if (isOtpSent)
                           Column(
                             children: [
@@ -232,13 +227,10 @@ decoration: BoxDecoration(
                               Text("حساب کاربری ندارید؟", style: TextStyle(color: Colors.grey.shade600)),
                               TextButton(
                                 onPressed: () async {
-                                  // UX Flow: انتقال به ثبت نام و دریافت توکن در صورت موفقیت
-                                  final result = await Navigator.push(
-                                    context, 
-                                    MaterialPageRoute(builder: (_) => SignupPage(mobile: _mobileController.text))
-                                  );
+                                  // استفاده از push برای رفتن به ثبت نام و انتظار برای نتیجه
+                                  final result = await context.push<String?>('/signup', extra: _mobileController.text);
                                   
-                                  if (result != null && result is String) {
+                                  if (result != null) {
                                     setState(() {
                                       _tempToken = result;
                                     });
@@ -271,11 +263,6 @@ decoration: BoxDecoration(
         labelText: 'شماره موبایل',
         hintText: '09xxxxxxxxx',
         prefixIcon: Icon(Icons.phone_iphone_rounded, color: color),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 2)),
-        filled: true,
-        fillColor: Colors.grey.shade50,
       ),
       validator: (v) => (v == null || v.length < 10) ? 'شماره موبایل معتبر نیست' : null,
     );
@@ -286,19 +273,14 @@ decoration: BoxDecoration(
       controller: _codeController,
       keyboardType: TextInputType.number,
       textAlign: TextAlign.center,
-      autofocus: true, // UX: باز شدن کیبورد به محض آمدن به این مرحله
+      autofocus: true,
       maxLength: 6,
       style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'کد تایید',
         counterText: "",
-        prefixIcon: const Icon(Icons.lock_outline_rounded),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 2)),
-        filled: true,
-        fillColor: Colors.grey.shade50,
+        prefixIcon: Icon(Icons.lock_outline_rounded),
       ),
     );
   }

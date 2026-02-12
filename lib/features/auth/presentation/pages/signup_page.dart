@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/service_locator.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -39,7 +40,7 @@ class _SignupPageState extends State<SignupPage> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(), // بازگشت با GoRouter
           ),
           title: const Text("ثبت‌نام", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
           centerTitle: true,
@@ -47,8 +48,8 @@ class _SignupPageState extends State<SignupPage> {
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is OtpSentSuccess) {
-              // UX: بازگشت خودکار به صفحه قبل به همراه توکن
-              Navigator.pop(context, state.tempToken);
+              // بازگرداندن توکن به صفحه لاگین
+              context.pop(state.tempToken);
             }
             if (state is AuthFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -115,7 +116,7 @@ class _SignupPageState extends State<SignupPage> {
                                 firstName: _fNameController.text,
                                 lastName: _lNameController.text,
                                 mobile: _mobileController.text,
-                                password: "Auto", // رمز عبور اتوماتیک
+                                password: "Auto", 
                               ));
                             }
                           },
@@ -155,11 +156,6 @@ class _SignupPageState extends State<SignupPage> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.grey.shade600),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 2)),
-        filled: true,
-        fillColor: Colors.grey.shade50,
       ),
       validator: validator ?? (v) => (v == null || v.isEmpty) ? '$label الزامی است' : null,
     );
