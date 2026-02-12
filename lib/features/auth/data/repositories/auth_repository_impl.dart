@@ -4,15 +4,8 @@ import '../../../../core/error/failures.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_source.dart';
-import '../models/user_dto.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  // اینجا به جای DioClient مستقیم، از RemoteDataSource استفاده می‌کنیم تا معماری تمیز بماند
-  // اما چون در مرحله قبل در فایل ServiceLocator هنوز DataSource را نساختیم، 
-  // فعلا موقتا اینجا کدهای DataSource را فراخوانی می‌کنیم یا باید ServiceLocator را آپدیت کنیم.
-  // برای راحتی شما و جلوگیری از گیج شدن، من اینجا فرض میکنم که شما 
-  // AuthRemoteDataSourceImpl را ساخته‌اید (فایل بالا).
-  
   final AuthRemoteDataSource _remoteDataSource;
   final SharedPreferences _prefs;
 
@@ -20,10 +13,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity>> login(String username, String password) async {
-    // این متد برای لاگین معمولی (ایمیل/پسورد) است که فعلا استفاده نمی‌شود اما ساختیمش
-    // چون در AuthRemoteDataSource متد login مستقیم نداریم (پرایوت است)، فعلا خالی میگذاریم
-    // یا میتوانید آن متد _loginAfterReset را پابلیک کنید.
-    // اما چون الان تمرکز روی OTP است، فعلا این را نادیده میگیریم.
+    // فعلاً پیاده‌سازی نشده چون تمرکز روی SMS و Register است
     return Left(ServerFailure("Login method not implemented yet"));
   }
 
@@ -42,11 +32,24 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final userDto = await _remoteDataSource.verifyOtp(mobile, token, code);
       
-      // ذخیره توکن برای استفاده‌های بعدی
-      if (userDto is UserDto) {
-         await _prefs.setString('client_token', userDto.token);
-         await _prefs.setString('client_name', "${userDto.firstName} ${userDto.lastName}");
-      }
+      // ذخیره توکن
+      await _prefs.setString('client_token', userDto.token);
+      await _prefs.setString('client_name', "${userDto.firstName} ${userDto.lastName}");
+      
+      return Right(userDto);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> register(String firstName, String lastName, String mobile, String password) async {
+    try {
+      final userDto = await _remoteDataSource.register(firstName, lastName, mobile, password);
+      
+      // ذخیره توکن
+      await _prefs.setString('client_token', userDto.token);
+      await _prefs.setString('client_name', "${userDto.firstName} ${userDto.lastName}");
       
       return Right(userDto);
     } catch (e) {

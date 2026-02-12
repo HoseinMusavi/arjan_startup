@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart'; // برای kDebugMode
+import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import 'legacy_interceptor.dart';
 
@@ -18,14 +18,13 @@ class DioClient {
             },
           ),
         ) {
-    // فقط در حالت دیباگ و فقط هدرها را لاگ میکنیم، بادی را خاموش میکنیم
     if (kDebugMode) {
       _dio.interceptors.add(LogInterceptor(
-        requestBody: false, // بادی درخواست لاگ نشود
-        responseBody: false, // بادی پاسخ (جیسون طولانی) لاگ نشود
-        requestHeader: false, 
+        requestBody: false,
+        responseBody: false,
+        requestHeader: false,
         responseHeader: false,
-        error: true, // فقط ارورها لاگ شوند
+        error: true,
       ));
     }
     _dio.interceptors.add(LegacyInterceptor());
@@ -34,14 +33,17 @@ class DioClient {
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     final Map<String, dynamic> params = queryParameters ?? {};
     params['api_key'] = AppConstants.apiKey;
-    params['lang'] = 'fa'; 
+    // تغییر مهم: زبان را روی ir گذاشتیم چون سرور شما روی این زبان تنظیم شده است
+    params['lang'] = 'ir'; 
+    
     return await _dio.get(path, queryParameters: params);
   }
 
   Future<Response> post(String path, {Map<String, dynamic>? data, Map<String, dynamic>? queryParameters}) async {
     final Map<String, dynamic> params = queryParameters ?? {};
     params['api_key'] = AppConstants.apiKey;
-    params['lang'] = 'fa';
+    // تغییر مهم: زبان را روی ir گذاشتیم
+    params['lang'] = 'ir';
 
     FormData? formData;
     if (data != null) {
