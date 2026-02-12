@@ -5,12 +5,14 @@ import '../../domain/repositories/auth_repository.dart';
 // --- Events ---
 abstract class AuthEvent extends Equatable {
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class SendOtpRequested extends AuthEvent {
   final String mobile;
   SendOtpRequested(this.mobile);
+  @override
+  List<Object?> get props => [mobile];
 }
 
 class VerifyOtpRequested extends AuthEvent {
@@ -18,6 +20,8 @@ class VerifyOtpRequested extends AuthEvent {
   final String token;
   final String code;
   VerifyOtpRequested({required this.mobile, required this.token, required this.code});
+  @override
+  List<Object?> get props => [mobile, token, code];
 }
 
 class RegisterRequested extends AuthEvent {
@@ -25,38 +29,32 @@ class RegisterRequested extends AuthEvent {
   final String lastName;
   final String mobile;
   final String password;
-
-  RegisterRequested({
-    required this.firstName,
-    required this.lastName,
-    required this.mobile,
-    required this.password,
-  });
+  RegisterRequested({required this.firstName, required this.lastName, required this.mobile, required this.password});
+  @override
+  List<Object?> get props => [firstName, lastName, mobile, password];
 }
 
 // --- States ---
 abstract class AuthState extends Equatable {
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class AuthInitial extends AuthState {}
 class AuthLoading extends AuthState {}
 class AuthSuccess extends AuthState {}
-
 class OtpSentSuccess extends AuthState {
   final String tempToken;
   final String mobile;
   OtpSentSuccess(this.tempToken, this.mobile);
   @override
-  List<Object> get props => [tempToken, mobile];
+  List<Object?> get props => [tempToken, mobile];
 }
-
 class AuthFailure extends AuthState {
   final String message;
   AuthFailure(this.message);
   @override
-  List<Object> get props => [message];
+  List<Object?> get props => [message];
 }
 
 // --- Bloc ---
@@ -64,39 +62,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repository;
 
   AuthBloc(this._repository) : super(AuthInitial()) {
-    
-    // 1. ارسال درخواست کد تایید
     on<SendOtpRequested>((event, emit) async {
       emit(AuthLoading());
       final result = await _repository.requestOtp(event.mobile);
       result.fold(
-        (error) => emit(AuthFailure(error.toString())),
+        (failure) => emit(AuthFailure(failure.message)),
         (token) => emit(OtpSentSuccess(token, event.mobile)),
       );
     });
 
-    // 2. تایید کد و لاگین
     on<VerifyOtpRequested>((event, emit) async {
       emit(AuthLoading());
       final result = await _repository.verifyOtp(event.mobile, event.token, event.code);
       result.fold(
-        (error) => emit(AuthFailure(error.toString())),
+        (failure) => emit(AuthFailure(failure.message)),
         (user) => emit(AuthSuccess()),
       );
     });
 
-    // 3. ثبت نام
     on<RegisterRequested>((event, emit) async {
       emit(AuthLoading());
-      final result = await _repository.register(
-        event.firstName, 
-        event.lastName, 
-        event.mobile, 
-        event.password
-      );
+      final result = await _repository.register(event.firstName, event.lastName, event.mobile, event.password);
       result.fold(
-        (error) => emit(AuthFailure(error.toString())),
-        (user) => emit(AuthSuccess()),
+        (failure) => emit(AuthFailure(failure.message)),
+        // مهم: بعد از ثبت‌نام، چون باید کد وارد شود، به استیت OtpSentSuccess می‌رویم
+        (user) => emit(OtpSentSuccess(user.token, user.phone)),
       );
     });
   }

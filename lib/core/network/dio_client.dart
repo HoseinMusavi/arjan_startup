@@ -18,31 +18,26 @@ class DioClient {
             },
           ),
         ) {
-    if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: false,
-        responseBody: false,
-        requestHeader: false,
-        responseHeader: false,
-        error: true,
-      ));
-    }
+    _dio.interceptors.add(LogInterceptor(
+      requestBody: true, // نمایش بدنه درخواست
+      responseBody: true, // نمایش بدنه پاسخ (بسیار مهم)
+      requestHeader: false,
+      responseHeader: false,
+      error: true,
+    ));
     _dio.interceptors.add(LegacyInterceptor());
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     final Map<String, dynamic> params = queryParameters ?? {};
     params['api_key'] = AppConstants.apiKey;
-    // تغییر مهم: زبان را روی ir گذاشتیم چون سرور شما روی این زبان تنظیم شده است
     params['lang'] = 'ir'; 
-    
     return await _dio.get(path, queryParameters: params);
   }
 
   Future<Response> post(String path, {Map<String, dynamic>? data, Map<String, dynamic>? queryParameters}) async {
     final Map<String, dynamic> params = queryParameters ?? {};
     params['api_key'] = AppConstants.apiKey;
-    // تغییر مهم: زبان را روی ir گذاشتیم
     params['lang'] = 'ir';
 
     FormData? formData;

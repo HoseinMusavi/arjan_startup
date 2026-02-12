@@ -15,14 +15,12 @@ class _SignupPageState extends State<SignupPage> {
   final _fNameController = TextEditingController();
   final _lNameController = TextEditingController();
   final _mobileController = TextEditingController();
-  final _passController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
-    if (widget.mobile != null) {
-      _mobileController.text = widget.mobile!;
-    }
+    if (widget.mobile != null) _mobileController.text = widget.mobile!;
   }
 
   @override
@@ -30,82 +28,54 @@ class _SignupPageState extends State<SignupPage> {
     return BlocProvider(
       create: (context) => getIt<AuthBloc>(),
       child: Scaffold(
-        appBar: AppBar(title: const Text("ثبت نام")),
+        backgroundColor: Colors.white,
+        appBar: AppBar(elevation: 0, backgroundColor: Colors.white, iconTheme: const IconThemeData(color: Colors.black)),
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
-            if (state is AuthFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-              );
+            if (state is OtpSentSuccess) {
+              // وقتی ثبت‌نام موفق بود و کد ارسال شد، توکن را به صفحه لاگین برمی‌گردانیم
+              Navigator.pop(context, state.tempToken);
             }
-            if (state is AuthSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('ثبت نام موفقیت‌آمیز بود!'), backgroundColor: Colors.green),
-              );
-              // هدایت به صفحه اصلی (در آینده)
-              Navigator.pop(context); // فعلا برمی‌گردد عقب
+            if (state is AuthFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
             }
           },
           builder: (context, state) {
+            final isLoading = state is AuthLoading;
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  const Icon(Icons.person_add_alt_1_rounded, size: 80, color: Color(0xFFFF5722)),
-                  const SizedBox(height: 24),
-                  
-                  TextField(
-                    controller: _fNameController,
-                    decoration: const InputDecoration(labelText: 'نام', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  TextField(
-                    controller: _lNameController,
-                    decoration: const InputDecoration(labelText: 'نام خانوادگی', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  TextField(
-                    controller: _mobileController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'شماره موبایل', prefixIcon: Icon(Icons.phone_android), border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  TextField(
-                    controller: _passController,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'رمز عبور', prefixIcon: Icon(Icons.lock), border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 32),
-
-                  if (state is AuthLoading)
-                    const CircularProgressIndicator()
-                  else
+              padding: const EdgeInsets.all(28.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("ثبت‌نام کاربر جدید", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 32),
+                    TextFormField(controller: _fNameController, decoration: const InputDecoration(labelText: "نام")),
+                    const SizedBox(height: 16),
+                    TextFormField(controller: _lNameController, decoration: const InputDecoration(labelText: "نام خانوادگی")),
+                    const SizedBox(height: 16),
+                    TextFormField(controller: _mobileController, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "شماره موبایل")),
+                    const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
+                      height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          context.read<AuthBloc>().add(
-                            RegisterRequested(
+                        onPressed: isLoading ? null : () {
+                          if (_formKey.currentState!.validate()) {
+                            context.read<AuthBloc>().add(RegisterRequested(
                               firstName: _fNameController.text,
                               lastName: _lNameController.text,
                               mobile: _mobileController.text,
-                              password: _passController.text,
-                            ),
-                          );
+                              password: "Auto",
+                            ));
+                          }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5722),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('ثبت نام و ورود', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("تایید و ادامه"),
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
             );
           },

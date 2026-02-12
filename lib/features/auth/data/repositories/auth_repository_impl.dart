@@ -13,8 +13,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity>> login(String username, String password) async {
-    // فعلاً پیاده‌سازی نشده چون تمرکز روی SMS و Register است
-    return Left(ServerFailure("Login method not implemented yet"));
+    return Left(ServerFailure("Login not implemented"));
   }
 
   @override
@@ -30,13 +29,9 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity>> verifyOtp(String mobile, String token, String code) async {
     try {
-      final userDto = await _remoteDataSource.verifyOtp(mobile, token, code);
-      
-      // ذخیره توکن
-      await _prefs.setString('client_token', userDto.token);
-      await _prefs.setString('client_name', "${userDto.firstName} ${userDto.lastName}");
-      
-      return Right(userDto);
+      final user = await _remoteDataSource.verifyOtp(mobile, token, code);
+      await _prefs.setString('client_token', user.token);
+      return Right(user);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -45,13 +40,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity>> register(String firstName, String lastName, String mobile, String password) async {
     try {
-      final userDto = await _remoteDataSource.register(firstName, lastName, mobile, password);
-      
-      // ذخیره توکن
-      await _prefs.setString('client_token', userDto.token);
-      await _prefs.setString('client_name', "${userDto.firstName} ${userDto.lastName}");
-      
-      return Right(userDto);
+      final user = await _remoteDataSource.register(firstName, lastName, mobile, password);
+      return Right(user);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

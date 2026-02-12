@@ -8,26 +8,19 @@ class LegacyInterceptor extends Interceptor {
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     var data = response.data;
 
-    // 1. اگر دیتا String بود (چه به خاطر هدر اشتباه، چه به خاطر خطاهای PHP)
     if (data is String) {
       try {
-        // --- بخش جدید برای حل مشکل PHP Warnings ---
-        // سرور شما قبل از جیسون، وارنینگ PHP چاپ می‌کند. ما باید اولین { را پیدا کنیم
         final int firstBrace = data.indexOf('{');
         if (firstBrace != -1) {
-          // همه چیز قبل از { را حذف می‌کنیم
           data = data.substring(firstBrace);
         }
-        // -------------------------------------------
-
         data = jsonDecode(data);
-        response.data = data; // دیتای تمیز شده را جایگزین می‌کنیم
+        response.data = data; 
       } catch (e) {
-        debugPrint("LegacyInterceptor: خطا در تمیزکاری و پارس جیسون - $e");
+        debugPrint("LegacyInterceptor Error: $e");
       }
     }
 
-    // 2. ادامه پردازش مثل قبل
     if (data is Map<String, dynamic>) {
       int code = -1;
       if (data['code'] != null) {
@@ -39,17 +32,9 @@ class LegacyInterceptor extends Interceptor {
         return;
       }
 
-      String msg = data['msg'] ?? 'خطای ناشناخته رخ داده است';
-
-      if (msg.toLowerCase().contains("token") || 
-          msg.toLowerCase().contains("session") ||
-          code == 11) { 
-        throw DioException(
-          requestOptions: response.requestOptions,
-          error: UnauthorizedException(message: msg),
-          type: DioExceptionType.badResponse,
-        );
-      }
+      String msg = data['msg'] ?? 'خطایی از سمت سرور رخ داد';
+      // لاگ کردن خطای سرور برای ردیابی
+      debugPrint("Server Error Log: Code $code - Msg: $msg");
 
       throw DioException(
         requestOptions: response.requestOptions,
@@ -58,7 +43,6 @@ class LegacyInterceptor extends Interceptor {
         response: response,
       );
     }
-
     handler.next(response);
   }
 }
