@@ -20,67 +20,148 @@ class _SignupPageState extends State<SignupPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.mobile != null) _mobileController.text = widget.mobile!;
+    if (widget.mobile != null) {
+      _mobileController.text = widget.mobile!;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+
     return BlocProvider(
       create: (context) => getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(elevation: 0, backgroundColor: Colors.white, iconTheme: const IconThemeData(color: Colors.black)),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text("ثبت‌نام", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+          centerTitle: true,
+        ),
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is OtpSentSuccess) {
-              // وقتی ثبت‌نام موفق بود و کد ارسال شد، توکن را به صفحه لاگین برمی‌گردانیم
+              // UX: بازگشت خودکار به صفحه قبل به همراه توکن
               Navigator.pop(context, state.tempToken);
             }
             if (state is AuthFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.red.shade600),
+              );
             }
           },
           builder: (context, state) {
             final isLoading = state is AuthLoading;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(28.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("ثبت‌نام کاربر جدید", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 32),
-                    TextFormField(controller: _fNameController, decoration: const InputDecoration(labelText: "نام")),
-                    const SizedBox(height: 16),
-                    TextFormField(controller: _lNameController, decoration: const InputDecoration(labelText: "نام خانوادگی")),
-                    const SizedBox(height: 16),
-                    TextFormField(controller: _mobileController, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "شماره موبایل")),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : () {
-                          if (_formKey.currentState!.validate()) {
-                            context.read<AuthBloc>().add(RegisterRequested(
-                              firstName: _fNameController.text,
-                              lastName: _lNameController.text,
-                              mobile: _mobileController.text,
-                              password: "Auto",
-                            ));
-                          }
-                        },
-                        child: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("تایید و ادامه"),
+
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 10),
+                      Text(
+                        "خوش آمدید!",
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        "لطفاً اطلاعات زیر را برای ایجاد حساب کاربری تکمیل کنید.",
+                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 32),
+
+                      _buildTextField(
+                        controller: _fNameController,
+                        label: "نام",
+                        icon: Icons.person_rounded,
+                        color: primaryColor,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      _buildTextField(
+                        controller: _lNameController,
+                        label: "نام خانوادگی",
+                        icon: Icons.person_outline_rounded,
+                        color: primaryColor,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      _buildTextField(
+                        controller: _mobileController,
+                        label: "شماره موبایل",
+                        icon: Icons.phone_android_rounded,
+                        inputType: TextInputType.phone,
+                        color: primaryColor,
+                        validator: (v) => (v == null || v.length < 10) ? 'شماره معتبر نیست' : null,
+                      ),
+
+                      const SizedBox(height: 48),
+
+                      SizedBox(
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : () {
+                            if (_formKey.currentState!.validate()) {
+                              context.read<AuthBloc>().add(RegisterRequested(
+                                firstName: _fNameController.text,
+                                lastName: _lNameController.text,
+                                mobile: _mobileController.text,
+                                password: "Auto", // رمز عبور اتوماتیک
+                              ));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                          child: isLoading 
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                            : const Text("ثبت‌نام و دریافت کد", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required Color color,
+    TextInputType inputType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: inputType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.grey.shade600),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 2)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+      validator: validator ?? (v) => (v == null || v.isEmpty) ? '$label الزامی است' : null,
     );
   }
 }

@@ -1,71 +1,56 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // رنگ‌بندی تپسی‌طور (نارنجی پررنگ و مشکی/خاکستری)
-  static const Color primaryColor = Color(0xFFFF5722); // نارنجی جذاب
-  static const Color secondaryColor = Color(0xFF212121); // مشکی تیره
-  static const Color scaffoldBackground = Color(0xFFF5F5F5); // خاکستری خیلی روشن برای پس‌زمینه
+  // رنگ‌بندی سازمانی
+  static const Color primaryColor = Color(0xFFFF5722); // نارنجی اصلی
+  static const Color primaryDark = Color(0xFFE64A19); // نارنجی تیره‌تر برای گرادینت
+  static const Color secondaryColor = Color(0xFF212121); 
+  static const Color scaffoldBackground = Color(0xFFFAFAFA);
 
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      primaryColor: primaryColor,
-      scaffoldBackgroundColor: scaffoldBackground,
+      
+      // تنظیم فونت پیش‌فرض برای کل برنامه
+      fontFamily: 'AppFont', 
+
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         primary: primaryColor,
         secondary: secondaryColor,
+        background: scaffoldBackground,
       ),
       
-      // فونت فارسی (اگر فونت وزیر یا یکان دارید بعدا اضافه میکنیم، فعلا پیش‌فرض)
-      fontFamily: 'Tahoma', 
+      scaffoldBackgroundColor: scaffoldBackground,
 
-      // استایل دکمه‌ها (گرد و نارنجی)
+      // تایپوگرافی مدرن (برای اینکه فونت روی همه ویجت‌ها درست بشینه)
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: secondaryColor),
+        bodyLarge: TextStyle(fontSize: 16, color: secondaryColor),
+        bodyMedium: TextStyle(fontSize: 14, color: secondaryColor),
+      ),
+
+      // استایل دکمه‌ها
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
-          foregroundColor: Colors.white, // رنگ متن دکمه
-          elevation: 0, // فلت و مدرن
+          foregroundColor: Colors.white,
+          elevation: 2,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12), // گوشه‌های گرد
-          ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'AppFont'),
         ),
       ),
 
-      // استایل فیلدهای ورودی (Input)
+      // استایل اینپوت‌ها
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none, // بدون بوردر در حالت عادی
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryColor, width: 2), // بوردر نارنجی هنگام فوکوس
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-      ),
-
-      // استایل اپ‌بار
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black, // آیکون‌ها مشکی
-        elevation: 0,
-        centerTitle: true,
+        contentPadding: const EdgeInsets.all(18),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: primaryColor, width: 1.5)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.red)),
       ),
     );
   }

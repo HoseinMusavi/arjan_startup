@@ -42,6 +42,21 @@ dev_dependencies:
   freezed: ^2.4.5
   json_serializable: ^6.7.1
   injectable_generator: ^2.4.1
+# ... (بخش‌های قبلی)
 
 flutter:
   uses-material-design: true
+  
+  # افزودن مسیر عکس‌ها (اگر لوگو داری)
+  assets:
+    # - assets/images/
+
+  # پیکربندی فونت‌ها
+  fonts:
+    - family: AppFont # نامی که در تم استفاده می‌کنیم
+      fonts:
+        - asset: assets/fonts/Vazir.ttf # مسیر فایل معمولی
+        - asset: assets/fonts/Vazir-Bold.ttf # مسیر فایل بولد
+          weight: 700
+
+# ...
