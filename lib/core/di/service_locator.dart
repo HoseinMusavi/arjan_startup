@@ -1,3 +1,7 @@
+import 'package:arjanstartup/features/home/data/datasources/home_remote_source.dart';
+import 'package:arjanstartup/features/home/data/repositories/home_repository_impl.dart';
+import 'package:arjanstartup/features/home/domain/repositories/home_repository.dart';
+import 'package:arjanstartup/features/home/presentation/bloc/home_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/dio_client.dart';
@@ -39,4 +43,21 @@ Future<void> setupServiceLocator() async {
   // در نهایت Bloc را ثبت می‌کنیم
   getIt.registerFactory<AuthBloc>(
       () => AuthBloc(getIt<AuthRepository>()));
+
+
+      // --- Home Feature ---
+  // 1. Data Source
+  getIt.registerLazySingleton<HomeRemoteDataSource>(
+    () => HomeRemoteDataSourceImpl(getIt()),
+  );
+
+  // 2. Repository
+  getIt.registerLazySingleton<HomeRepository>(
+    () => HomeRepositoryImpl(getIt()),
+  );
+
+  // 3. Bloc
+  getIt.registerFactory<HomeBloc>(
+    () => HomeBloc(getIt()),
+  );
 }

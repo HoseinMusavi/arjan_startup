@@ -120,7 +120,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: const Text(
-                    "ارچان استارتاپ",
+                    "ارجان استارتاپ",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,
