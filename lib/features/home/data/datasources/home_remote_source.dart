@@ -1,167 +1,112 @@
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
-import '../../../../core/error/exceptions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/dio_client.dart';
 import '../models/cuisine_dto.dart';
 import '../models/merchant_dto.dart';
 
 abstract class HomeRemoteDataSource {
-  Future<Map<String, dynamic>> getHomeData();
-  Future<List<MerchantDto>> getMerchants({int page = 0});
+  Future<Map<String, dynamic>> getHomeData(); // بنرها
+  Future<List<CuisineDto>> getCuisines(); // دسته‌بندی‌ها
+  Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0}); // لیست‌های متنوع
 }
 
 class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   final DioClient _client;
-
   HomeRemoteDataSourceImpl(this._client);
+
+  // مختصات دقیق بهبهان (طبق لاگ)
+  static const String _lat = "30.0549908";
+  static const String _lng = "50.1601352";
+
+  // متد کمکی برای ساخت پارامترهای مشترک
+  Map<String, dynamic> _buildCommonParams() {
+    final prefs = getIt<SharedPreferences>();
+    return {
+      "lat": _lat,
+      "lng": _lng,
+      "device_platform": "android",
+      "user_token": prefs.getString('client_token') ?? "",
+      "lang": "ir",
+      "current_page": "tabbar",
+    };
+  }
 
   @override
   Future<Map<String, dynamic>> getHomeData() async {
-    // ... (کد دریافت تنظیمات و بنرها که درست کار میکند دست نزن) ...
-    // کدهای قبلی خودت را اینجا بگذار یا اگر نداری بگو بفرستم
-    // فقط بخش getMerchants را تغییر دادم
-    
-    // (برای اینکه فایل طولانی نشود، فرض میکنم کد getHomeData قبلی را داری)
-    // اگر نداری بگو
-    
+    debugPrint("📡 API: getSettings (Banners)...");
     try {
       final response = await _client.get("/getSettings");
-      final details = response.data['details'];
-      final settings = details['settings'];
-      
       final List<String> banners = [];
+      final settings = response.data['details']?['settings'];
+      
       if (settings != null && settings['home_banner'] != null) {
-        for (var item in settings['home_banner']) {
-          banners.add(item.toString());
-        }
+        banners.addAll((settings['home_banner'] as List).map((e) => e.toString()));
       }
-
-      final List<CuisineDto> cuisines = [];
-      if (settings != null && settings['cuisine'] != null) {
-        final List rawList = settings['cuisine'];
-        for (var item in rawList) {
-          try {
-            cuisines.add(CuisineDto.fromJson(item));
-          } catch (_) {}
-        }
-      }
-
-      return {"banners": banners, "cuisines": cuisines};
-
-    } on DioException catch (e) {
-      if (kIsWeb && _isCorsError(e)) return _getMockHomeData();
-      throw ServerException(message: e.message ?? "Error", code: 500);
+      return {"banners": banners};
+    } catch (e) {
+      debugPrint("❌ Banner Error: $e");
+      return {"banners": []};
     }
   }
 
   @override
-  Future<List<MerchantDto>> getMerchants({int page = 0}) async {
-    debugPrint("📡 Finding correct Merchant API...");
-    
-    // لیست اندپوینت‌های احتمالی به ترتیب اولویت
-    final endpoints = [
-      {
-        "url": "/search",
-        "method": "POST",
-        "data": {"search_type": "list", "page": page}
-      },
-      {
-        "url": "/getMerchantList",
-        "method": "POST",
-        "data": {"page": page}
-      },
-      {
-        "url": "/search", // تلاش با GET
-        "method": "GET",
-        "query": {"search_type": "list", "page": page}
-      },
-      {
-        "url": "/merchant/search", // اندپوینت جدید احتمالی
-        "method": "POST",
-        "data": {"page": page}
-      }
-    ];
-
-    for (var ep in endpoints) {
-      try {
-        debugPrint("👉 Trying endpoint: ${ep['url']} (${ep['method']})");
-        Response response;
-        
-        if (ep['method'] == 'POST') {
-          response = await _client.post(ep['url'] as String, data: ep['data'] as Map<String, dynamic>);
-        } else {
-          response = await _client.get(ep['url'] as String, queryParameters: ep['query'] as Map<String, dynamic>);
-        }
-
-        // اگر موفق بود و لیست داشت
-        final merchants = _parseMerchants(response.data);
-        if (merchants.isNotEmpty) {
-          debugPrint("✅ FOUND! Using endpoint: ${ep['url']}");
-          return merchants;
-        } else {
-           debugPrint("⚠️ Endpoint returned empty list/bad format. Trying next...");
-        }
-
-      } catch (e) {
-        debugPrint("❌ Failed: $e");
-      }
-    }
-
-    // اگر همه شکست خوردند
-    if (kIsWeb) return _getMockMerchants(); // برای وب ماک برگردان
-    
-    debugPrint("🛑 All endpoints failed.");
-    return []; // برای موبایل لیست خالی (فعلا)
-  }
-
-  List<MerchantDto> _parseMerchants(dynamic data) {
-    if (data == null) return [];
+  Future<List<CuisineDto>> getCuisines() async {
+    debugPrint("📡 API: Cuisines (Carousel)...");
     try {
-      List rawList = [];
-      if (data['details'] is Map) {
-         if (data['details']['list'] != null) rawList = data['details']['list'];
-         else if (data['details']['data'] != null) rawList = data['details']['data'];
-      } else if (data['details'] is List) {
-        rawList = data['details'];
-      }
+      final params = _buildCommonParams();
+      params.addAll({
+        "carousel": "1",
+        "search_type": "byLatLong", // طبق لاگ، این هم ارسال می‌شود
+      });
 
-      final List<MerchantDto> merchants = [];
-      for (var item in rawList) {
-        try {
-          merchants.add(MerchantDto.fromJson(item));
-        } catch (_) {}
+      final response = await _client.get("/search", queryParameters: params);
+
+      if (response.data['code'] == 1) {
+        final List rawList = response.data['details']?['list'] ?? [];
+        return rawList
+            .where((item) => item['id'] != 0 && item['name'] != "") // حذف آیتم‌های پوچ
+            .map((item) => CuisineDto.fromJson(item))
+            .toList();
       }
-      return merchants;
+      return [];
     } catch (e) {
+      debugPrint("❌ Cuisine Error: $e");
       return [];
     }
   }
 
-  bool _isCorsError(DioException e) {
-    return e.type == DioExceptionType.connectionError || 
-           (e.message != null && e.message!.contains('XMLHttpRequest'));
-  }
+  @override
+  Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0}) async {
+    debugPrint("📡 API: Merchants ($searchType)...");
+    try {
+      final params = _buildCommonParams();
+      params.addAll({
+        "search_type": searchType,
+        "page": page,
+      });
 
-  // ... (متدهای Mock مثل قبل) ...
-   Map<String, dynamic> _getMockHomeData() {
-    return {
-      "banners": [],
-      "cuisines": []
-    };
-  }
+      final response = await _client.get("/search", queryParameters: params);
 
-  List<MerchantDto> _getMockMerchants() {
-    return [
-      MerchantDto(
-        id: "101",
-        name: "رستوران نمونه",
-        logo: "",
-        address: "آدرس تستی",
-        rating: 4.5,
-        deliveryFee: "15000",
-        minOrder: "50000",
-        isOpen: true,
-      ),
-    ];
+      if (response.data['code'] == 1) {
+        final details = response.data['details'];
+        List rawList = [];
+        
+        // هندل کردن تفاوت ساختار خروجی (گاهی list است گاهی data)
+        if (details is Map) {
+          rawList = details['list'] ?? details['data'] ?? [];
+        } else if (details is List) {
+          rawList = details;
+        }
+
+        return rawList.map((item) => MerchantDto.fromJson(item)).toList();
+      } else {
+        debugPrint("⚠️ API ($searchType) Returned Code: ${response.data['code']} (Likely empty)");
+        return [];
+      }
+    } catch (e) {
+      debugPrint("❌ Merchant Error ($searchType): $e");
+      return [];
+    }
   }
 }

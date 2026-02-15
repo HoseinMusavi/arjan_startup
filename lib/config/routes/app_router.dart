@@ -8,70 +8,61 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 
 class AppRouter {
-  // کلیدهای نویگیتور برای دسترسی‌های سطح پایین در صورت نیاز
-  static final _rootNavigatorKey = GlobalKey<NavigatorState>();
+  // کلید نویگیتور برای کنترل وضعیت
+  static final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/', // نقطه شروع برنامه
-    debugLogDiagnostics: true, // نمایش لاگ‌های تغییر مسیر در کنسول
+    initialLocation: '/',
+    debugLogDiagnostics: true,
     
-    // --- لاجیک هوشمند ریدایرکت (Redirection Logic) ---
-    // این تابع قبل از هر تغییر مسیری اجرا می‌شود تا وضعیت کاربر را چک کند
+    // --- لاجیک ریدایرکت (هدایت خودکار) ---
     redirect: (BuildContext context, GoRouterState state) {
       final prefs = getIt<SharedPreferences>();
       
-      // ۱. آیا کاربر توکن دارد؟ (لاگین است؟)
+      // ۱. آیا کاربر لاگین است؟
       final bool isLoggedIn = prefs.containsKey('client_token');
       
-      // ۲. کاربر الان کجاست؟
-      final bool isLoggingIn = state.uri.toString() == '/login';
-      final bool isSigningUp = state.uri.toString() == '/signup';
-      final bool isSplash = state.uri.toString() == '/';
+      // ۲. مسیر فعلی
+      final String location = state.uri.toString();
+      final bool isLoggingIn = location == '/login';
+      final bool isSigningUp = location == '/signup';
+      final bool isSplash = location == '/';
 
-      // ۳. اگر کاربر لاگین نیست و می‌خواهد به صفحات داخلی برود (بجز لاگین/ثبت‌نام/اسپلش)
-      // او را به صفحه لاگین هدایت کن
+      // ۳. اگر لاگین نیست و می‌خواهد به صفحات داخلی (مثل خانه) برود -> برو به لاگین
       if (!isLoggedIn && !isLoggingIn && !isSigningUp && !isSplash) {
         return '/login';
       }
 
-      // ۴. اگر کاربر لاگین است و به صفحه لاگین یا اسپلش می‌آید
-      // او را مستقیماً به خانه بفرست
+      // ۴. اگر لاگین است و در صفحه ورود یا اسپلش است -> برو به خانه
       if (isLoggedIn && (isLoggingIn || isSplash)) {
         return '/home';
       }
 
-      // در غیر این صورت، اجازه بده به مسیر درخواستی برود
-      return null;
+      return null; // تغییر مسیر لازم نیست
     },
 
     routes: [
-      // اسپلش اسکرین
       GoRoute(
         path: '/',
         name: 'splash',
         builder: (context, state) => const SplashPage(),
       ),
-      
-      // صفحه ورود
       GoRoute(
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginPage(),
       ),
-
-      // صفحه ثبت‌نام
       GoRoute(
         path: '/signup',
         name: 'signup',
         builder: (context, state) {
-          // دریافت پارامتر موبایل که از صفحه لاگین پاس داده می‌شود
-          final mobile = state.extra as String?; 
-          return SignupPage(mobile: mobile);
+          // دریافت شماره موبایل از صفحه قبل
+          final mobile = state.extra as String?;
+          // ✅ اصلاح شد: استفاده از mobileNumber (نام صحیح پارامتر در SignupPage)
+          return SignupPage(mobileNumber: mobile);
         },
       ),
-
-      // صفحه اصلی (خانه)
       GoRoute(
         path: '/home',
         name: 'home',

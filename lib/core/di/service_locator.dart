@@ -1,63 +1,108 @@
-import 'package:arjanstartup/features/home/data/datasources/home_remote_source.dart';
-import 'package:arjanstartup/features/home/data/repositories/home_repository_impl.dart';
-import 'package:arjanstartup/features/home/domain/repositories/home_repository.dart';
-import 'package:arjanstartup/features/home/presentation/bloc/home_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Core
 import '../network/dio_client.dart';
+
+// Splash Feature
 import '../../features/splash/data/repositories/config_repository.dart';
 import '../../features/splash/presentation/bloc/splash_bloc.dart';
-import '../../features/auth/data/datasources/auth_remote_source.dart'; // جدید
-import '../../features/auth/data/repositories/auth_repository_impl.dart'; // جدید
-import '../../features/auth/domain/repositories/auth_repository.dart'; // جدید
-import '../../features/auth/presentation/bloc/auth_bloc.dart'; // جدید
+
+// Auth Feature
+import '../../features/auth/data/datasources/auth_remote_source.dart';
+import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+
+// Home Feature
+import '../../features/home/data/datasources/home_remote_source.dart';
+import '../../features/home/data/repositories/home_repository_impl.dart';
+import '../../features/home/domain/repositories/home_repository.dart';
+import '../../features/home/presentation/bloc/home_bloc.dart';
+
+// Profile Feature
+import '../../features/profile/data/datasources/profile_remote_source.dart';
+import '../../features/profile/data/repositories/profile_repository_impl.dart';
+import '../../features/profile/domain/repositories/profile_repository.dart';
+import '../../features/profile/presentation/bloc/profile_bloc.dart';
 
 final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
-  // 1. External
+  // ---------------------------------------------------------------------------
+  // 1. External (وابستگی‌های خارجی)
+  // ---------------------------------------------------------------------------
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton(() => sharedPreferences);
-  
-  // 2. Core
+
+  // ---------------------------------------------------------------------------
+  // 2. Core (هسته)
+  // ---------------------------------------------------------------------------
   getIt.registerLazySingleton<DioClient>(() => DioClient());
 
-  // 3. Features - Splash
+  // ---------------------------------------------------------------------------
+  // 3. Features - Splash (اسپلش)
+  // ---------------------------------------------------------------------------
   getIt.registerLazySingleton<ConfigRepository>(
       () => ConfigRepositoryImpl(getIt<DioClient>()));
+  
   getIt.registerFactory<SplashBloc>(
       () => SplashBloc(getIt<ConfigRepository>()));
 
-  // 4. Features - Auth (بخش جدید)
-  // ابتدا DataSource را ثبت می‌کنیم
+  // ---------------------------------------------------------------------------
+  // 4. Features - Auth (احراز هویت)
+  // ---------------------------------------------------------------------------
+  // Data Source
   getIt.registerLazySingleton<AuthRemoteDataSource>(
       () => AuthRemoteDataSourceImpl(getIt<DioClient>()));
 
-  // سپس Repository را ثبت می‌کنیم (توجه کنید که ورودی‌هایش را از GetIt می‌گیرد)
+  // Repository
   getIt.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(
         getIt<AuthRemoteDataSource>(), 
-        getIt<SharedPreferences>()
+        getIt<SharedPreferences>(),
       ));
 
-  // در نهایت Bloc را ثبت می‌کنیم
+  // Bloc
   getIt.registerFactory<AuthBloc>(
       () => AuthBloc(getIt<AuthRepository>()));
 
-
-      // --- Home Feature ---
-  // 1. Data Source
+  // ---------------------------------------------------------------------------
+  // 5. Features - Home (خانه)
+  // ---------------------------------------------------------------------------
+  // Data Source
   getIt.registerLazySingleton<HomeRemoteDataSource>(
-    () => HomeRemoteDataSourceImpl(getIt()),
+    () => HomeRemoteDataSourceImpl(getIt<DioClient>()),
   );
 
-  // 2. Repository
+  // Repository
   getIt.registerLazySingleton<HomeRepository>(
-    () => HomeRepositoryImpl(getIt()),
+    () => HomeRepositoryImpl(getIt<HomeRemoteDataSource>()),
   );
 
-  // 3. Bloc
+  // Bloc
   getIt.registerFactory<HomeBloc>(
-    () => HomeBloc(getIt()),
+    () => HomeBloc(getIt<HomeRepository>()),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 6. Features - Profile (پروفایل)
+  // ---------------------------------------------------------------------------
+  // Data Source (نیاز به SharedPreferences دارد برای توکن)
+  getIt.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(
+      getIt<DioClient>(), 
+      getIt<SharedPreferences>(),
+    ),
+  );
+
+  // Repository
+  getIt.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(getIt<ProfileRemoteDataSource>()),
+  );
+
+  // Bloc
+  getIt.registerFactory<ProfileBloc>(
+    () => ProfileBloc(getIt<ProfileRepository>()),
   );
 }

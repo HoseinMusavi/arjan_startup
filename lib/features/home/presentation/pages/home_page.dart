@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../profile/presentation/bloc/profile_bloc.dart';
 import '../bloc/home_bloc.dart';
 
 class HomePage extends StatelessWidget {
@@ -8,10 +9,13 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<HomeBloc>()..add(HomeStarted()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => getIt<HomeBloc>()..add(HomeStarted())),
+        BlocProvider(create: (context) => getIt<ProfileBloc>()..add(ProfileRequested())),
+      ],
       child: Scaffold(
-        backgroundColor: Colors.grey.shade50,
+        backgroundColor: Colors.grey.shade100,
         appBar: _buildAppBar(),
         body: BlocBuilder<HomeBloc, HomeState>(
           builder: (context, state) {
@@ -19,58 +23,59 @@ class HomePage extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (state.status == HomeStatus.failure) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, size: 60, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(state.errorMessage, style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => context.read<HomeBloc>().add(HomeRefreshed()),
-                      child: const Text("تلاش مجدد"),
-                    )
-                  ],
-                ),
-              );
-            }
-
+            // حتی اگر ارور باشد، سعی می‌کنیم دیتای موجود (مثل بنر) را نشان دهیم
             return RefreshIndicator(
               onRefresh: () async {
                 context.read<HomeBloc>().add(HomeRefreshed());
+                context.read<ProfileBloc>().add(ProfileRequested());
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // بنرها
-                    if (state.banners.isNotEmpty) ...[
-                       _buildSectionTitle("پیشنهادهای ویژه"),
-                       _buildBanners(state.banners),
-                    ],
+                    const SizedBox(height: 16),
+                    
+                    // --- بنرها (به صورت اسلایدر) ---
+                    if (state.banners.isNotEmpty) 
+                       _buildBannerSlider(state.banners)
+                    else if (state.status == HomeStatus.success)
+                       // اگر بنر نبود پلیس‌هولدر
+                       Container(height: 150, margin: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(16))),
 
-                    // دسته‌بندی‌ها
+                    // --- دسته‌بندی‌ها ---
                     if (state.cuisines.isNotEmpty) ...[
                       const SizedBox(height: 24),
                       _buildSectionTitle("دسته‌بندی‌ها"),
                       _buildCuisines(state.cuisines),
                     ],
 
-                    // رستوران‌ها
+                    // --- پیشنهادات ویژه ---
+                    if (state.specialOffers.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _buildSectionTitle("تخفیف‌های ویژه 🔥"),
+                      _buildHorizontalList(state.specialOffers),
+                    ],
+
+                    // --- برگزیده‌ها ---
+                    if (state.featuredMerchants.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _buildSectionTitle("برگزیده‌ها ⭐"),
+                      _buildHorizontalList(state.featuredMerchants),
+                    ],
+
+                    // --- همه رستوران‌ها ---
                     const SizedBox(height: 24),
-                    _buildSectionTitle("رستوران‌های اطراف"),
-                    if (state.merchants.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Center(child: Text("فعلاً رستورانی یافت نشد.")),
-                      )
+                    _buildSectionTitle(state.nearbyMerchants.isNotEmpty ? "رستوران‌های اطراف" : "همه رستوران‌ها"),
+                    
+                    if (state.nearbyMerchants.isEmpty && state.allMerchants.isEmpty)
+                      _buildEmptyState()
                     else
-                      _buildMerchants(state.merchants),
+                      _buildVerticalList(
+                        state.nearbyMerchants.isNotEmpty ? state.nearbyMerchants : state.allMerchants
+                      ),
                       
-                    const SizedBox(height: 80), // فضای خالی برای اسکرول آخر
+                    const SizedBox(height: 80), 
                   ],
                 ),
               ),
@@ -85,47 +90,35 @@ class HomePage extends StatelessWidget {
     return AppBar(
       title: Column(
         children: [
-          const Text("آرژان فود", style: TextStyle(fontSize: 16, color: Colors.grey)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.location_on, size: 14, color: Colors.orange),
-              SizedBox(width: 4),
-              Text("انتخاب آدرس", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
-              Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.black),
-            ],
+          const Text("آرژان فود", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+          BlocBuilder<ProfileBloc, ProfileState>(
+            builder: (context, state) {
+              if (state is ProfileLoaded) {
+                return Text(
+                  "خوش آمدید، ${state.profile.firstName}", 
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
         ],
       ),
-      actions: [
-        IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none_rounded, color: Colors.black))
-      ],
       backgroundColor: Colors.white,
       elevation: 0,
+      centerTitle: true,
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-      ),
-    );
-  }
-
-  // ویجت موقت برای نمایش بنرها
-  Widget _buildBanners(List<String> banners) {
+  // ✅ اسلایدر بنر اصلاح شده
+  Widget _buildBannerSlider(List<String> banners) {
     return SizedBox(
       height: 180,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: PageView.builder(
+        controller: PageController(viewportFraction: 0.9),
         itemCount: banners.length,
         itemBuilder: (context, index) {
           return Container(
-            width: 300,
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -133,6 +126,13 @@ class HomePage extends StatelessWidget {
                 image: NetworkImage(banners[index]),
                 fit: BoxFit.cover,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              ],
             ),
           );
         },
@@ -140,28 +140,42 @@ class HomePage extends StatelessWidget {
     );
   }
   
-  // ویجت موقت برای دسته‌بندی‌ها
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
+    );
+  }
+
   Widget _buildCuisines(List<dynamic> cuisines) {
     return SizedBox(
-      height: 100,
+      height: 110,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: cuisines.length,
         itemBuilder: (context, index) {
           final item = cuisines[index];
           return Container(
             width: 80,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            margin: const EdgeInsets.only(left: 12),
             child: Column(
               children: [
                 Container(
-                  height: 60,
-                  width: 60,
+                  height: 65,
+                  width: 65,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 5
+                      )
+                    ],
                     image: item.image.isNotEmpty 
                       ? DecorationImage(image: NetworkImage(item.image), fit: BoxFit.cover)
                       : null,
@@ -173,7 +187,8 @@ class HomePage extends StatelessWidget {
                   item.name, 
                   maxLines: 1, 
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -183,12 +198,69 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ویجت موقت برای رستوران‌ها
-  Widget _buildMerchants(List<dynamic> merchants) {
+  Widget _buildHorizontalList(List<dynamic> merchants) {
+    return SizedBox(
+      height: 240,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: merchants.length,
+        itemBuilder: (context, index) {
+          final m = merchants[index];
+          return Container(
+            width: 170,
+            margin: const EdgeInsets.only(left: 12, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8
+                )
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: m.logo.isNotEmpty 
+                      ? Image.network(m.logo, fit: BoxFit.cover, width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)))
+                      : Container(color: Colors.grey.shade200, child: const Icon(Icons.store, color: Colors.grey)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
+                          Text(" ${m.rating}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildVerticalList(List<dynamic> merchants) {
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: merchants.length,
       itemBuilder: (context, index) {
         final m = merchants[index];
@@ -197,70 +269,71 @@ class HomePage extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10
+              )
+            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              // عکس کاور رستوران (فعلا از لوگو استفاده میکنیم اگر کاور ندارد)
-              Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ClipRRect(
+                borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)), // RTL rounded
+                child: Container(
+                  width: 100,
+                  height: 100,
                   color: Colors.grey.shade200,
-                  image: m.logo.isNotEmpty 
-                    ? DecorationImage(image: NetworkImage(m.logo), fit: BoxFit.cover)
-                    : null,
+                  child: m.logo.isNotEmpty 
+                    ? Image.network(m.logo, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.store))
+                    : const Icon(Icons.store, size: 40, color: Colors.grey),
                 ),
-                child: m.logo.isEmpty ? const Center(child: Icon(Icons.store, size: 50, color: Colors.grey)) : null,
               ),
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(m.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(m.rating.toString(), style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 4),
-                              Icon(Icons.star, size: 14, color: Colors.green.shade800),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(m.address, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                    const SizedBox(height: 8),
-                    const Divider(),
-                    Row(
-                      children: [
-                        const Icon(Icons.delivery_dining, size: 16, color: Colors.orange),
-                        const SizedBox(width: 4),
-                        Text("پیک: ${m.deliveryFee} تومان", style: const TextStyle(fontSize: 12)),
-                        const Spacer(),
-                        const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        const Text("۳۰-۴۰ دقیقه", style: TextStyle(fontSize: 12)),
-                      ],
-                    )
-                  ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Text(m.address, style: TextStyle(color: Colors.grey.shade600, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.delivery_dining, size: 16, color: Colors.orange.shade700),
+                          const SizedBox(width: 4),
+                          Text(m.deliveryFee, style: const TextStyle(fontSize: 12)),
+                          const Spacer(),
+                          const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
+                          Text(" ${m.rating}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      alignment: Alignment.center,
+      child: Column(
+        children: [
+          Icon(Icons.restaurant_menu, size: 60, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            "فعلاً رستورانی در این اطراف یافت نشد",
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -34,6 +34,8 @@ dependencies:
 
   # Navigation (New)
   go_router: ^13.0.0
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

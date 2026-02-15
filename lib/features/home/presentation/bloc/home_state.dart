@@ -6,34 +6,45 @@ class HomeState extends Equatable {
   final HomeStatus status;
   final List<String> banners;
   final List<CuisineDto> cuisines;
-  final List<MerchantDto> merchants;
+  final List<MerchantDto> nearbyMerchants;
+  final List<MerchantDto> specialOffers; // جدید
+  final List<MerchantDto> featuredMerchants;
+  final List<MerchantDto> allMerchants;
   final String errorMessage;
 
   const HomeState({
     this.status = HomeStatus.initial,
     this.banners = const [],
     this.cuisines = const [],
-    this.merchants = const [],
+    this.nearbyMerchants = const [],
+    this.specialOffers = const [],
+    this.featuredMerchants = const [],
+    this.allMerchants = const [],
     this.errorMessage = '',
   });
 
-  // متد کپی برای تغییر وضعیت بدون از دست دادن داده‌های قبلی
   HomeState copyWith({
     HomeStatus? status,
     List<String>? banners,
     List<CuisineDto>? cuisines,
-    List<MerchantDto>? merchants,
+    List<MerchantDto>? nearbyMerchants,
+    List<MerchantDto>? specialOffers,
+    List<MerchantDto>? featuredMerchants,
+    List<MerchantDto>? allMerchants,
     String? errorMessage,
   }) {
     return HomeState(
       status: status ?? this.status,
       banners: banners ?? this.banners,
       cuisines: cuisines ?? this.cuisines,
-      merchants: merchants ?? this.merchants,
+      nearbyMerchants: nearbyMerchants ?? this.nearbyMerchants,
+      specialOffers: specialOffers ?? this.specialOffers,
+      featuredMerchants: featuredMerchants ?? this.featuredMerchants,
+      allMerchants: allMerchants ?? this.allMerchants,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 
   @override
-  List<Object> get props => [status, banners, cuisines, merchants, errorMessage];
+  List<Object> get props => [status, banners, cuisines, nearbyMerchants, specialOffers, featuredMerchants, allMerchants, errorMessage];
 }

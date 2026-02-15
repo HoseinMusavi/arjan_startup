@@ -1,26 +1,40 @@
 import '../../domain/entities/user_entity.dart';
 
 class UserDto extends UserEntity {
-  UserDto({
-    required super.id,
-    required super.firstName,
-    required super.lastName,
-    required super.email,
-    required super.token,
-    required super.phone,
-  });
+  const UserDto({
+    required String token,
+    required String firstName,
+    required String lastName,
+    required String phone,
+  }) : super(
+          token: token,
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone,
+        );
 
   factory UserDto.fromJson(Map<String, dynamic> json) {
-    // گاهی سرور details را می‌فرستد، گاهی مستقیم فیلدها را
-    final data = json['details'] ?? json; 
+    // 1. پیدا کردن محل واقعی دیتا (پشتیبانی از client_info برای لاگین)
+    dynamic data = json['details'];
     
+    if (data != null && data['client_info'] != null) {
+      data = data['client_info'];
+    }
+
     return UserDto(
-      id: (data['client_id'] ?? '').toString(),
-      firstName: data['first_name'] ?? '',
-      lastName: data['last_name'] ?? '',
-      email: data['email_address'] ?? '',
-      token: data['client_token'] ?? '', // این مهم‌ترین فیلد است
-      phone: data['contact_phone'] ?? '',
+      token: data?['token']?.toString() ?? '',
+      firstName: data?['first_name']?.toString() ?? '',
+      lastName: data?['last_name']?.toString() ?? '',
+      phone: data?['contact_phone']?.toString() ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'token': token,
+      'first_name': firstName,
+      'last_name': lastName,
+      'contact_phone': phone,
+    };
   }
 }

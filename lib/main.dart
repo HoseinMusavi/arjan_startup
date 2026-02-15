@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'; // ✅ افزوده شد
 import 'core/di/service_locator.dart';
 import 'config/theme/app_theme.dart';
 import 'config/routes/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // راه‌اندازی سرویس‌ها (DI)
   await setupServiceLocator();
-
   runApp(const MyApp());
 }
 
@@ -17,14 +15,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // استفاده از متد router برای فعال‌سازی GoRouter
     return MaterialApp.router(
       title: 'Arjan Startup',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      
-      // تنظیمات GoRouter
       routerConfig: AppRouter.router,
+      
+      // ✅ تنظیمات راست‌چین (RTL)
+      locale: const Locale('fa', 'IR'), // زبان پیش‌فرض فارسی
+      supportedLocales: const [
+        Locale('fa', 'IR'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }
