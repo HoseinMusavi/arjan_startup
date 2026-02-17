@@ -1,51 +1,62 @@
-import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
-class MerchantDto extends Equatable {
+class MerchantDto {
   final String id;
   final String name;
-  final String cuisine;
   final String logo;
+  final String address;
   final String distance;
-  final String deliveryTime;
-  final String rating;
+  final double rating;
+  final String deliveryFee;
+  final String minOrder;
   final bool isOpen;
 
-  const MerchantDto({
+  MerchantDto({
     required this.id,
     required this.name,
-    required this.cuisine,
     required this.logo,
+    required this.address,
     required this.distance,
-    required this.deliveryTime,
     required this.rating,
+    required this.deliveryFee,
+    required this.minOrder,
     required this.isOpen,
   });
 
   factory MerchantDto.fromJson(Map<String, dynamic> json) {
-    // پارس کردن وضعیت باز بودن (طبق لاگ: open_status_raw: "open" یا "pre-order")
-    final String statusRaw = json['open_status_raw']?.toString() ?? '';
-    final bool isOpen = statusRaw == 'open' || statusRaw == 'open_for_delivery';
+    try {
+      // استخراج امتیاز از آبجکت rating
+      double ratingVal = 0.0;
+      if (json['rating'] is Map) {
+        ratingVal = double.tryParse(json['rating']['ratings']?.toString() ?? '0') ?? 0.0;
+      } else {
+        ratingVal = double.tryParse(json['ratings']?.toString() ?? '0') ?? 0.0;
+      }
 
-    // پارس کردن امتیاز (rating یک آبجکت است)
-    String ratingVal = "0";
-    if (json['rating'] is Map) {
-      ratingVal = json['rating']['votes']?.toString() ?? "0";
+      // وضعیت باز بودن
+      bool open = false;
+      final statusRaw = json['open_status_raw']?.toString();
+      if (statusRaw == 'open' || statusRaw == 'open_for_delivery') {
+        open = true;
+      }
+
+      return MerchantDto(
+        id: json['merchant_id']?.toString() ?? '',
+        name: json['restaurant_name']?.toString() ?? 'رستوران',
+        logo: json['logo']?.toString() ?? '',
+        address: json['address']?.toString() ?? '',
+        distance: json['distance_plot']?.toString() ?? '',
+        rating: ratingVal,
+        deliveryFee: json['delivery_charges']?.toString() ?? '0',
+        minOrder: json['minimum_order']?.toString() ?? '0',
+        isOpen: open,
+      );
+    } catch (e) {
+      debugPrint("❌ Error parsing MerchantDto: $e");
+      return MerchantDto(
+        id: '0', name: 'Error', logo: '', address: '', distance: '', 
+        rating: 0, deliveryFee: '', minOrder: '', isOpen: false
+      );
     }
-
-    return MerchantDto(
-      id: json['merchant_id']?.toString() ?? '',
-      // طبق لاگ شما نام رستوران در restaurant_name است
-      name: json['restaurant_name']?.toString() ?? '', 
-      cuisine: json['cuisine']?.toString() ?? '',
-      logo: json['logo']?.toString() ?? '',
-      // طبق لاگ، distance_plot فرمت شده است (مثلا 0.3 کیلومتر)
-      distance: json['distance_plot']?.toString() ?? '', 
-      deliveryTime: json['delivery_estimation']?.toString() ?? '20-30 min',
-      rating: ratingVal,
-      isOpen: isOpen,
-    );
   }
-
-  @override
-  List<Object?> get props => [id, name];
 }

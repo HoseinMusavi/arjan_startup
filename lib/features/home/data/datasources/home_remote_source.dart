@@ -17,13 +17,14 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   Future<Map<String, String>> _getUserLocation() async {
     final prefs = getIt<SharedPreferences>();
+    // مختصات پیش‌فرض (طبق لاگ‌های موفق شما)
     final String lat = prefs.getDouble('user_lat')?.toString() ?? "30.5882768"; 
     final String lng = prefs.getDouble('user_lng')?.toString() ?? "50.2575974";
     return {"lat": lat, "lng": lng};
   }
 
-  // ساخت پارامترها دقیقاً طبق نسخه PWA
-  Future<Map<String, dynamic>> _buildPWAParams(String searchType, int page) async {
+  // ✅ پارامترهای دقیق طبق نسخه PWA که کار می‌کرد
+  Future<Map<String, dynamic>> _buildParams(String searchType, int page) async {
     final prefs = getIt<SharedPreferences>();
     final location = await _getUserLocation();
     String token = prefs.getString('client_token') ?? "";
@@ -34,12 +35,11 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       "lng": location['lng'],
       "device_platform": "android",
       "device_id": "device_01231",
-      "device_uiid": "uiid_01234561",
+      "device_uiid": "uiid_01234561", // حیاتی برای سرور شما
       "code_version": "1.5",
       "lang": "ir",
       "current_page": "tabbar",
-      "user_token": token, // ارسال توکن چون در اندپوینت درست (searchMerchant) کار می‌کند
-      // "page": page, // پارامتر page را فعلا نمی‌فرستیم چون در لینک PWA نبود، مگر برای صفحه بعدی
+      "user_token": token, // ارسال توکن چون اندپوینت searchMerchant با آن مشکلی ندارد
     };
   }
 
@@ -48,15 +48,18 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
     try {
       final response = await _client.get("/getSettings");
       final List<String> banners = [];
+      
       if (response.statusCode == 200) {
         final details = response.data['details'];
         if (details is Map) {
           var bannerList;
+          // جستجوی هوشمند بنر در ساختارهای مختلف
           if (details['settings'] is Map && details['settings']['home_banner'] is List) {
             bannerList = details['settings']['home_banner'];
           } else if (details['banner'] is List) {
             bannerList = details['banner'];
           }
+
           if (bannerList != null) {
             banners.addAll((bannerList as List).map((e) => e.toString()));
           }
@@ -71,12 +74,10 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   @override
   Future<List<CuisineDto>> getCuisines() async {
     try {
-      // برای Cuisines فعلا از همان search استفاده می‌کنیم چون معمولا جداست
-      // اما اگر کار نکرد، می‌توانیم این را هم به searchMerchant تغییر دهیم
-      final params = await _buildPWAParams("byLatLong", 0);
+      // استفاده از searchMerchant برای همه درخواست‌ها
+      final params = await _buildParams("byLatLong", 0);
       params['carousel'] = "1";
       
-      // تست با searchMerchant برای دسته‌بندی‌ها هم ضرر ندارد
       final response = await _client.get("/searchMerchant", queryParameters: params);
 
       if (response.statusCode == 200 && response.data['code'] == 1) {
@@ -95,14 +96,12 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   @override
   Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0}) async {
     try {
-      final params = await _buildPWAParams(searchType, page);
+      final params = await _buildParams(searchType, page);
       
-      // ✅ اصلاح حیاتی: استفاده از اندپوینت صحیح طبق PWA
-      const String endpoint = "/searchMerchant"; 
+      // ✅ استفاده از اندپوینت صحیح
+      debugPrint("📡 Fetching Merchants ($searchType) via /searchMerchant");
 
-      debugPrint("📡 Fetching Merchants ($searchType) from $endpoint");
-
-      final response = await _client.get(endpoint, queryParameters: params);
+      final response = await _client.get("/searchMerchant", queryParameters: params);
 
       if (response.statusCode == 200) {
         if (response.data['code'] == 1) {
@@ -116,17 +115,15 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
           return rawList.map((item) => MerchantDto.fromJson(item)).toList();
         } 
         else if (response.data['code'] == 2) {
-           debugPrint("⚠️ No restaurants found (Code 2).");
-           // فال‌بک به همه رستوران‌ها
+           // اگر لیست خالی بود، فال‌بک به همه
            if (searchType == "byLatLong" && page == 0) {
              return getMerchants(searchType: "allMerchant", page: 0);
            }
            return [];
         }
       } 
-      // اگر باز هم ارور داد (که با اندپوینت جدید بعید است)
+      // مدیریت ارور احتمالی
       else {
-        debugPrint("🔥 SERVER ERROR ${response.statusCode}");
         if (searchType == "byLatLong" && page == 0) {
            return getMerchants(searchType: "allMerchant", page: 0);
         }
