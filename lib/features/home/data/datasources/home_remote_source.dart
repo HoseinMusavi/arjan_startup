@@ -6,106 +6,122 @@ import '../models/cuisine_dto.dart';
 import '../models/merchant_dto.dart';
 
 abstract class HomeRemoteDataSource {
-  Future<Map<String, dynamic>> getHomeData(); // بنرها
-  Future<List<CuisineDto>> getCuisines(); // دسته‌بندی‌ها
-  Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0}); // لیست‌های متنوع
+  Future<Map<String, dynamic>> getHomeData();
+  Future<List<CuisineDto>> getCuisines();
+  Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0});
 }
 
 class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   final DioClient _client;
   HomeRemoteDataSourceImpl(this._client);
 
-  // مختصات دقیق بهبهان (طبق لاگ)
-  static const String _lat = "30.0549908";
-  static const String _lng = "50.1601352";
-
-  // متد کمکی برای ساخت پارامترهای مشترک
-  Map<String, dynamic> _buildCommonParams() {
+  Future<Map<String, String>> _getUserLocation() async {
     final prefs = getIt<SharedPreferences>();
+    // استفاده از مختصات ذخیره شده یا دیفالت (طبق لاگ شما)
+    final String lat = prefs.getDouble('user_lat')?.toString() ?? "30.5882768"; 
+    final String lng = prefs.getDouble('user_lng')?.toString() ?? "50.2575974";
+    return {"lat": lat, "lng": lng};
+  }
+
+  // ✅ ساخت پارامترها دقیقا طبق لاگ موفق سرور
+  Future<Map<String, dynamic>> _buildExactParams(String searchType, int page) async {
+    final prefs = getIt<SharedPreferences>();
+    final location = await _getUserLocation();
+    String token = prefs.getString('client_token') ?? "";
+
     return {
-      "lat": _lat,
-      "lng": _lng,
+      "search_type": searchType,
+      "lat": location['lat'],
+      "lng": location['lng'],
+      "page": page,
+      // پارامترهای حیاتی (طبق لاگ شما)
       "device_platform": "android",
-      "user_token": prefs.getString('client_token') ?? "",
+      "device_id": "device_01231",      // ثابت طبق لاگ
+      "device_uiid": "uiid_01234561",   // ✅ نکته طلایی: uiid به جای uuid
+      "code_version": "1.5",
       "lang": "ir",
       "current_page": "tabbar",
+      "user_token": token, // ارسال توکن چون در لاگ موفق وجود داشت
     };
   }
 
   @override
   Future<Map<String, dynamic>> getHomeData() async {
-    debugPrint("📡 API: getSettings (Banners)...");
     try {
       final response = await _client.get("/getSettings");
       final List<String> banners = [];
-      final settings = response.data['details']?['settings'];
-      
-      if (settings != null && settings['home_banner'] != null) {
-        banners.addAll((settings['home_banner'] as List).map((e) => e.toString()));
+      if (response.statusCode == 200) {
+        final details = response.data['details'];
+        // تلاش برای یافتن بنر در ساختارهای مختلف
+        if (details is Map) {
+          if (details['settings'] is Map && details['settings']['home_banner'] is List) {
+            banners.addAll((details['settings']['home_banner'] as List).map((e) => e.toString()));
+          } else if (details['banner'] is List) {
+            banners.addAll((details['banner'] as List).map((e) => e.toString()));
+          }
+        }
       }
       return {"banners": banners};
     } catch (e) {
-      debugPrint("❌ Banner Error: $e");
       return {"banners": []};
     }
   }
 
   @override
   Future<List<CuisineDto>> getCuisines() async {
-    debugPrint("📡 API: Cuisines (Carousel)...");
     try {
-      final params = _buildCommonParams();
-      params.addAll({
-        "carousel": "1",
-        "search_type": "byLatLong", // طبق لاگ، این هم ارسال می‌شود
-      });
-
+      final params = await _buildExactParams("byLatLong", 0);
+      params['carousel'] = "1";
+      
       final response = await _client.get("/search", queryParameters: params);
 
-      if (response.data['code'] == 1) {
+      if (response.statusCode == 200 && response.data['code'] == 1) {
         final List rawList = response.data['details']?['list'] ?? [];
         return rawList
-            .where((item) => item['id'] != 0 && item['name'] != "") // حذف آیتم‌های پوچ
+            .where((item) => item is Map && item['id'] != 0)
             .map((item) => CuisineDto.fromJson(item))
             .toList();
       }
       return [];
     } catch (e) {
-      debugPrint("❌ Cuisine Error: $e");
       return [];
     }
   }
 
   @override
   Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0}) async {
-    debugPrint("📡 API: Merchants ($searchType)...");
     try {
-      final params = _buildCommonParams();
-      params.addAll({
-        "search_type": searchType,
-        "page": page,
-      });
+      final params = await _buildExactParams(searchType, page);
+      debugPrint("📡 Fetching Merchants ($searchType) - UIID Fixed");
 
       final response = await _client.get("/search", queryParameters: params);
 
-      if (response.data['code'] == 1) {
-        final details = response.data['details'];
-        List rawList = [];
+      // بررسی کد پاسخ
+      if (response.statusCode == 200) {
+        final int code = response.data['code'] is int ? response.data['code'] : int.tryParse(response.data['code'].toString()) ?? 0;
         
-        // هندل کردن تفاوت ساختار خروجی (گاهی list است گاهی data)
-        if (details is Map) {
-          rawList = details['list'] ?? details['data'] ?? [];
-        } else if (details is List) {
-          rawList = details;
-        }
+        // حالت ۱: موفقیت و وجود لیست
+        if (code == 1) {
+          final details = response.data['details'];
+          List rawList = [];
+          
+          if (details is Map) {
+            rawList = details['list'] ?? details['data'] ?? [];
+          } else if (details is List) {
+            rawList = details;
+          }
 
-        return rawList.map((item) => MerchantDto.fromJson(item)).toList();
-      } else {
-        debugPrint("⚠️ API ($searchType) Returned Code: ${response.data['code']} (Likely empty)");
-        return [];
+          return rawList.map((item) => MerchantDto.fromJson(item)).toList();
+        } 
+        // حالت ۲: هیچ نتیجه‌ای یافت نشد (مثل پاسخی که برای special_Offers فرستادید)
+        else if (code == 2) {
+          debugPrint("⚠️ No results for $searchType (Code 2)");
+          return []; // لیست خالی برمی‌گردانیم تا ارور نمایش داده نشود
+        }
       }
+      return [];
     } catch (e) {
-      debugPrint("❌ Merchant Error ($searchType): $e");
+      debugPrint("❌ Exception: $e");
       return [];
     }
   }
