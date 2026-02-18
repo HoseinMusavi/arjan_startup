@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 class MainWrapper extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
-  const MainWrapper({super.key, required this.navigationShell});
+  const MainWrapper({
+    super.key,
+    required this.navigationShell,
+  });
 
-  void _goBranch(int index) {
+  void _goToBranch(int index) {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
@@ -16,13 +19,13 @@ class MainWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // بدنه اصلی که وضعیتش حفظ می‌شود
       body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              // ✅ اصلاح شده: استفاده از متد جدید withValues برای فلاتر 3.27+
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -30,16 +33,24 @@ class MainWrapper extends StatelessWidget {
         ),
         child: BottomNavigationBar(
           currentIndex: navigationShell.currentIndex,
-          onTap: _goBranch,
+          onTap: _goToBranch,
           type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
           selectedItemColor: Colors.orange,
           unselectedItemColor: Colors.grey,
           showUnselectedLabels: true,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazir'),
+          unselectedLabelStyle: const TextStyle(fontFamily: 'Vazir'),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
               label: 'خانه',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.location_on_outlined),
+              activeIcon: Icon(Icons.location_on),
+              label: 'مکان‌ها',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

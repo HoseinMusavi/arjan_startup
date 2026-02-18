@@ -17,14 +17,13 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   Future<Map<String, String>> _getUserLocation() async {
     final prefs = getIt<SharedPreferences>();
-    // مختصات پیش‌فرض (طبق لاگ‌های موفق شما)
     final String lat = prefs.getDouble('user_lat')?.toString() ?? "30.5882768"; 
     final String lng = prefs.getDouble('user_lng')?.toString() ?? "50.2575974";
     return {"lat": lat, "lng": lng};
   }
 
-  // ✅ پارامترهای دقیق طبق نسخه PWA که کار می‌کرد
-  Future<Map<String, dynamic>> _buildParams(String searchType, int page) async {
+  // پارامترهای دقیق طبق نسخه PWA
+  Future<Map<String, dynamic>> _buildPWAParams(String searchType, int page) async {
     final prefs = getIt<SharedPreferences>();
     final location = await _getUserLocation();
     String token = prefs.getString('client_token') ?? "";
@@ -35,11 +34,12 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       "lng": location['lng'],
       "device_platform": "android",
       "device_id": "device_01231",
-      "device_uiid": "uiid_01234561", // حیاتی برای سرور شما
+      "device_uiid": "uiid_01234561",
       "code_version": "1.5",
       "lang": "ir",
       "current_page": "tabbar",
-      "user_token": token, // ارسال توکن چون اندپوینت searchMerchant با آن مشکلی ندارد
+      "user_token": token,
+      "api_key": "OOMW8CGDJJDRW3NBSABe3K26F7HQ75VGN",
     };
   }
 
@@ -52,16 +52,17 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       if (response.statusCode == 200) {
         final details = response.data['details'];
         if (details is Map) {
-          var bannerList;
-          // جستجوی هوشمند بنر در ساختارهای مختلف
+          // ✅ اصلاح شده: تعریف تایپ dynamic برای متغیر
+          dynamic bannerList;
+          
           if (details['settings'] is Map && details['settings']['home_banner'] is List) {
             bannerList = details['settings']['home_banner'];
           } else if (details['banner'] is List) {
             bannerList = details['banner'];
           }
 
-          if (bannerList != null) {
-            banners.addAll((bannerList as List).map((e) => e.toString()));
+          if (bannerList != null && bannerList is List) {
+            banners.addAll((bannerList).map((e) => e.toString()));
           }
         }
       }
@@ -74,8 +75,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   @override
   Future<List<CuisineDto>> getCuisines() async {
     try {
-      // استفاده از searchMerchant برای همه درخواست‌ها
-      final params = await _buildParams("byLatLong", 0);
+      final params = await _buildPWAParams("byLatLong", 0);
       params['carousel'] = "1";
       
       final response = await _client.get("/searchMerchant", queryParameters: params);
@@ -96,12 +96,12 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   @override
   Future<List<MerchantDto>> getMerchants({required String searchType, int page = 0}) async {
     try {
-      final params = await _buildParams(searchType, page);
-      
-      // ✅ استفاده از اندپوینت صحیح
-      debugPrint("📡 Fetching Merchants ($searchType) via /searchMerchant");
+      final params = await _buildPWAParams(searchType, page);
+      const String endpoint = "/searchMerchant"; 
 
-      final response = await _client.get("/searchMerchant", queryParameters: params);
+      debugPrint("📡 Fetching Merchants ($searchType) via $endpoint");
+
+      final response = await _client.get(endpoint, queryParameters: params);
 
       if (response.statusCode == 200) {
         if (response.data['code'] == 1) {
@@ -115,14 +115,12 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
           return rawList.map((item) => MerchantDto.fromJson(item)).toList();
         } 
         else if (response.data['code'] == 2) {
-           // اگر لیست خالی بود، فال‌بک به همه
            if (searchType == "byLatLong" && page == 0) {
              return getMerchants(searchType: "allMerchant", page: 0);
            }
            return [];
         }
       } 
-      // مدیریت ارور احتمالی
       else {
         if (searchType == "byLatLong" && page == 0) {
            return getMerchants(searchType: "allMerchant", page: 0);
