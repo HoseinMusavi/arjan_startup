@@ -1,5 +1,5 @@
 import 'dart:developer';
-
+import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../models/merchant_dto.dart';
 import '../models/cuisine_dto.dart';
@@ -29,43 +29,47 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
       final data = response.data;
       
-      // ✅ مدیریت صحیح زمانی که سرور لیست خالی برمی‌گرداند (Code 2)
       if (data['code'] == 2) {
-        log('🟢 سرور برای لیست $searchType دیتایی نداشت (Code 2).');
         return [];
       }
 
       if (data['code'] == 1 && data['details'] != null && data['details']['list'] != null) {
         final List<dynamic> list = data['details']['list'];
-        log('🟢 دریافت ${list.length} فروشگاه برای لیست $searchType');
         return list.map((json) => MerchantDto.fromJson(json)).toList();
       }
 
       return [];
     } catch (e) {
-      log('🔴 خطا در دریافت لیست $searchType: $e');
-      return []; // در صورت خطای شبکه، یک لیست خالی برمی‌گردانیم تا کل صفحه کرش نکند
+      log('🔴 Error in getMerchants ($searchType): $e');
+      return [];
     }
   }
 
   @override
   Future<List<CuisineDto>> getCuisines() async {
     try {
-      // ✅ طبق لاگ‌ها، دسته‌بندی‌ها درون /getSettings هستند
       final response = await _dioClient.get('/getSettings');
       final data = response.data;
 
       if (data['code'] == 1 && data['details'] != null) {
-        final settings = data['details']['settings'];
-        if (settings != null && settings['cuisine'] != null) {
-          final List<dynamic> cuisines = settings['cuisine'];
-          log('🟢 دریافت ${cuisines.length} دسته‌بندی');
-          return cuisines.map((e) => CuisineDto.fromJson(e)).toList();
+        // تغییر مهم در این بخش: گاهی 'settings' وجود ندارد و مستقیم داخل 'details' است.
+        final details = data['details'];
+        List<dynamic> cuisinesRaw = [];
+        
+        if (details['settings'] != null && details['settings']['cuisine'] != null) {
+           cuisinesRaw = details['settings']['cuisine'];
+        } else if (details['cuisine'] != null) {
+           cuisinesRaw = details['cuisine'];
+        }
+
+        if (cuisinesRaw.isNotEmpty) {
+          log('🟢 Cuisines Parsed: ${cuisinesRaw.length}');
+          return cuisinesRaw.map((e) => CuisineDto.fromJson(e)).toList();
         }
       }
       return [];
     } catch (e) {
-      log('🔴 خطا در دریافت دسته‌بندی‌ها: $e');
+      log('🔴 Error in getCuisines: $e');
       return [];
     }
   }
@@ -73,21 +77,26 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   @override
   Future<List<String>> getBanners() async {
     try {
-      // ✅ دریافت بنرهای اصلی از تنظیمات
       final response = await _dioClient.get('/getSettings');
       final data = response.data;
 
       if (data['code'] == 1 && data['details'] != null) {
-        final settings = data['details']['settings'];
-        if (settings != null && settings['home_banner'] != null) {
-          final List<dynamic> banners = settings['home_banner'];
-          log('🟢 دریافت ${banners.length} بنر');
-          return banners.map((e) => e.toString()).toList();
+        final details = data['details'];
+        List<dynamic> bannersRaw = [];
+
+        if (details['settings'] != null && details['settings']['home_banner'] != null) {
+          bannersRaw = details['settings']['home_banner'];
+        } else if (details['home_banner'] != null) {
+          bannersRaw = details['home_banner'];
+        }
+
+        if (bannersRaw.isNotEmpty) {
+          return bannersRaw.map((e) => e.toString()).toList();
         }
       }
       return [];
     } catch (e) {
-      log('🔴 خطا در دریافت بنرها: $e');
+      log('🔴 Error in getBanners: $e');
       return [];
     }
   }
