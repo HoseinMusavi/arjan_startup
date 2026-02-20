@@ -1,83 +1,158 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../profile/presentation/bloc/profile_bloc.dart';
 import '../bloc/home_bloc.dart';
+import '../../data/models/cuisine_dto.dart';
+import '../../data/models/merchant_dto.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => getIt<HomeBloc>()..add(HomeStarted())),
-        BlocProvider(create: (context) => getIt<ProfileBloc>()..add(ProfileRequested())),
-      ],
+    return BlocProvider(
+      create: (context) => getIt<HomeBloc>()..add(HomeStarted()),
       child: Scaffold(
-        backgroundColor: Colors.grey.shade100,
-        appBar: _buildAppBar(),
-        body: BlocBuilder<HomeBloc, HomeState>(
-          builder: (context, state) {
-            if (state.status == HomeStatus.loading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        backgroundColor: Colors.grey.shade100, // پس‌زمینه روشن‌تر برای جداسازی بهتر کارت‌ها
+        body: SafeArea(
+          child: BlocBuilder<HomeBloc, HomeState>(
+            builder: (context, state) {
+              if (state.status == HomeStatus.loading || state.status == HomeStatus.initial) {
+                return const Center(child: CircularProgressIndicator(color: Colors.pinkAccent)); // رنگ صورتی اسنپ‌فود
+              }
 
-            // حتی اگر ارور باشد، سعی می‌کنیم دیتای موجود (مثل بنر) را نشان دهیم
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<HomeBloc>().add(HomeRefreshed());
-                context.read<ProfileBloc>().add(ProfileRequested());
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
+              if (state.status == HomeStatus.failure) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(state.errorMessage, style: const TextStyle(color: Colors.red)),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () => context.read<HomeBloc>().add(HomeRefreshed()),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.pinkAccent),
+                        child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
+                      )
+                    ],
+                  ),
+                );
+              }
+
+              return RefreshIndicator(
+                color: Colors.pinkAccent,
+                onRefresh: () async {
+                  context.read<HomeBloc>().add(HomeRefreshed());
+                },
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    _buildHeader(),
+                    if (state.banners.isNotEmpty) _buildBanners(state.banners),
+                    if (state.cuisines.isNotEmpty) _buildCuisinesGrid(state.cuisines),
                     
-                    // --- بنرها (به صورت اسلایدر) ---
-                    if (state.banners.isNotEmpty) 
-                       _buildBannerSlider(state.banners)
-                    else if (state.status == HomeStatus.success)
-                       // اگر بنر نبود پلیس‌هولدر
-                       Container(height: 150, margin: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(16))),
+                    // فاصله بعد از دسته‌بندی‌ها
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)), 
 
-                    // --- دسته‌بندی‌ها ---
-                    if (state.cuisines.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      _buildSectionTitle("دسته‌بندی‌ها"),
-                      _buildCuisines(state.cuisines),
-                    ],
-
-                    // --- پیشنهادات ویژه ---
-                    if (state.specialOffers.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      _buildSectionTitle("تخفیف‌های ویژه 🔥"),
-                      _buildHorizontalList(state.specialOffers),
-                    ],
-
-                    // --- برگزیده‌ها ---
+                    // بخش برگزیده‌ها یا پیشنهادهای ویژه (لیست افقی)
                     if (state.featuredMerchants.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      _buildSectionTitle("برگزیده‌ها ⭐"),
+                      _buildSectionTitle('پیشنهادهای ویژه آرژان', true),
                       _buildHorizontalList(state.featuredMerchants),
                     ],
 
-                    // --- همه رستوران‌ها ---
-                    const SizedBox(height: 24),
-                    _buildSectionTitle(state.nearbyMerchants.isNotEmpty ? "رستوران‌های اطراف" : "همه رستوران‌ها"),
+                    // بخش همه رستوران‌ها (لیست عمودی)
+                    if (state.nearbyMerchants.isNotEmpty) ...[
+                      _buildSectionTitle('همه رستوران‌ها و فروشگاه‌ها', false),
+                      _buildVerticalList(state.nearbyMerchants),
+                    ],
                     
-                    if (state.nearbyMerchants.isEmpty && state.allMerchants.isEmpty)
-                      _buildEmptyState()
-                    else
-                      _buildVerticalList(
-                        state.nearbyMerchants.isNotEmpty ? state.nearbyMerchants : state.allMerchants
-                      ),
-                      
-                    const SizedBox(height: 80), 
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)), // فضای خالی پایین برای نویگیشن بار
                   ],
                 ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- 1. هدر اصلی (شامل لوکیشن و سرچ بار) ---
+  Widget _buildHeader() {
+    return SliverToBoxAdapter(
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, color: Colors.grey.shade800, size: 20),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'موقعیت من',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                    ),
+                    Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade800, size: 20),
+                  ],
+                ),
+                Icon(Icons.notifications_none_rounded, color: Colors.grey.shade800),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // سرچ بار شبیه اسنپ فود
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  Icon(Icons.search, color: Colors.grey.shade600),
+                  const SizedBox(width: 8),
+                  Text(
+                    'جستجو در آرژان فود...',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- 2. بنرهای اسلایدی ---
+  Widget _buildBanners(List<String> banners) {
+    return SliverToBoxAdapter(
+      child: Container(
+        color: Colors.white,
+        height: 160,
+        child: PageView.builder(
+          physics: const BouncingScrollPhysics(),
+          controller: PageController(viewportFraction: 0.92),
+          itemCount: banners.length,
+          itemBuilder: (context, index) {
+            return Container(
+              margin: const EdgeInsets.only(right: 8, left: 8, bottom: 16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                image: DecorationImage(
+                  image: NetworkImage(banners[index]),
+                  fit: BoxFit.cover,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ],
               ),
             );
           },
@@ -86,251 +161,240 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar() {
-    return AppBar(
-      title: Column(
-        children: [
-          const Text("آرژان فود", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-          BlocBuilder<ProfileBloc, ProfileState>(
-            builder: (context, state) {
-              if (state is ProfileLoaded) {
-                return Text(
-                  "خوش آمدید، ${state.profile.firstName}", 
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)
-                );
-              }
-              return const SizedBox.shrink();
-            },
+  // --- 3. گرید دسته‌بندی‌ها (دقیقاً مشابه اسنپ‌فود) ---
+  Widget _buildCuisinesGrid(List<CuisineDto> cuisines) {
+    return SliverToBoxAdapter(
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4, // 4 ستون در یک ردیف
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 0.8, // تنظیم ارتفاع عکس به متن
           ),
-        ],
-      ),
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: true,
-    );
-  }
-
-  // ✅ اسلایدر بنر اصلاح شده
-  Widget _buildBannerSlider(List<String> banners) {
-    return SizedBox(
-      height: 180,
-      child: PageView.builder(
-        controller: PageController(viewportFraction: 0.9),
-        itemCount: banners.length,
-        itemBuilder: (context, index) {
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: NetworkImage(banners[index]),
-                fit: BoxFit.cover,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-  
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-      ),
-    );
-  }
-
-  Widget _buildCuisines(List<dynamic> cuisines) {
-    return SizedBox(
-      height: 110,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: cuisines.length,
-        itemBuilder: (context, index) {
-          final item = cuisines[index];
-          return Container(
-            width: 80,
-            margin: const EdgeInsets.only(left: 12),
-            child: Column(
+          itemCount: cuisines.length > 8 ? 8 : cuisines.length, // نهایتا 8 تا نشون بده (دو ردیف)
+          itemBuilder: (context, index) {
+            final cuisine = cuisines[index];
+            return Column(
               children: [
-                Container(
-                  height: 65,
-                  width: 65,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 5
-                      )
-                    ],
-                    image: item.image.isNotEmpty 
-                      ? DecorationImage(image: NetworkImage(item.image), fit: BoxFit.cover)
-                      : null,
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withValues(alpha: 0.15), 
+                          blurRadius: 10, 
+                          offset: const Offset(0, 4)
+                        )
+                      ],
+                      image: DecorationImage(
+                        image: NetworkImage(cuisine.image),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                  child: item.image.isEmpty ? const Icon(Icons.fastfood, color: Colors.orange) : null,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  item.name, 
-                  maxLines: 1, 
+                  cuisine.name,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  maxLines: 1,
                 ),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildHorizontalList(List<dynamic> merchants) {
-    return SizedBox(
-      height: 240,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: merchants.length,
-        itemBuilder: (context, index) {
-          final m = merchants[index];
-          return Container(
-            width: 170,
-            margin: const EdgeInsets.only(left: 12, bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8
-                )
-              ],
-            ),
+  // --- تایتل سکشن‌ها ---
+  Widget _buildSectionTitle(String title, bool showSeeAll) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+            if (showSeeAll)
+              const Row(
+                children: [
+                  Text('مشاهده همه', style: TextStyle(color: Colors.pinkAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                  Icon(Icons.arrow_forward_ios, size: 12, color: Colors.pinkAccent),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- 4. لیست افقی فروشگاه‌ها (برای پیشنهادهای ویژه) ---
+  Widget _buildHorizontalList(List<MerchantDto> merchants) {
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: 230,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          itemCount: merchants.length,
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4),
+              child: _buildMerchantCard(merchants[index], isHorizontal: true),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // --- 5. لیست عمودی فروشگاه‌ها ---
+  Widget _buildVerticalList(List<MerchantDto> merchants) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: _buildMerchantCard(merchants[index], isHorizontal: false),
+          );
+        },
+        childCount: merchants.length,
+      ),
+    );
+  }
+
+  // --- طراحی کارت فروشگاه (دقیقاً مشابه اسنپ‌فود) ---
+  Widget _buildMerchantCard(MerchantDto merchant, {required bool isHorizontal}) {
+    return Container(
+      width: isHorizontal ? 270 : double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // کاور فروشگاه و لوگو
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                height: 110,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  image: DecorationImage(
+                    image: NetworkImage(merchant.background.isNotEmpty ? merchant.background : merchant.logo),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                // لایه تاریک روی عکس برای دیده شدن بهتر
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.3)],
+                    ),
+                  ),
+                ),
+              ),
+              // لوگوی مربعی با سایه (اسنپ‌فودی)
+              Positioned(
+                bottom: -20,
+                right: 16,
+                child: Container(
+                  width: 55,
+                  height: 55,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)
+                    ],
+                    image: DecorationImage(
+                      image: NetworkImage(merchant.logo),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28), // فاصله برای جبران لوگوی شناور
+          
+          // اطلاعات پایین کارت
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: m.logo.isNotEmpty 
-                      ? Image.network(m.logo, fit: BoxFit.cover, width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)))
-                      : Container(color: Colors.grey.shade200, child: const Icon(Icons.store, color: Colors.grey)),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Row(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        merchant.name,
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // امتیاز فروشگاه
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
                         children: [
-                          const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-                          Text(" ${m.rating}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Text(merchant.rating.toString(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green.shade800)),
+                          const SizedBox(width: 2),
+                          Icon(Icons.star, color: Colors.green.shade800, size: 12),
                         ],
-                      )
-                    ],
-                  ),
-                )
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // نوع غذا
+                Text(
+                  merchant.cuisineText.isNotEmpty ? merchant.cuisineText : 'فست فود، پیتزا',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                // هزینه ارسال
+                Row(
+                  children: [
+                    Icon(Icons.motorcycle, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Text(
+                      merchant.deliveryFee == '0' || merchant.deliveryFee.isEmpty 
+                          ? 'ارسال رایگان' 
+                          : 'ارسال ${merchant.deliveryFee} تومان', 
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildVerticalList(List<dynamic> merchants) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: merchants.length,
-      itemBuilder: (context, index) {
-        final m = merchants[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10
-              )
-            ],
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)), // RTL rounded
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.grey.shade200,
-                  child: m.logo.isNotEmpty 
-                    ? Image.network(m.logo, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(Icons.store))
-                    : const Icon(Icons.store, size: 40, color: Colors.grey),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
-                      Text(m.address, style: TextStyle(color: Colors.grey.shade600, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.delivery_dining, size: 16, color: Colors.orange.shade700),
-                          const SizedBox(width: 4),
-                          Text(m.deliveryFee, style: const TextStyle(fontSize: 12)),
-                          const Spacer(),
-                          const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-                          Text(" ${m.rating}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ],
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      alignment: Alignment.center,
-      child: Column(
-        children: [
-          Icon(Icons.restaurant_menu, size: 60, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(
-            "فعلاً رستورانی در این اطراف یافت نشد",
-            style: TextStyle(color: Colors.grey.shade600),
           ),
         ],
       ),

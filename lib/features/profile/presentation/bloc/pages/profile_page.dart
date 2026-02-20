@@ -1,6 +1,6 @@
-import 'package:arjanstartup/core/di/service_locator.dart';
-import 'package:arjanstartup/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:arjanstartup/features/profile/presentation/bloc/profile_bloc.dart';
+import 'package:arjan_startup/core/di/service_locator.dart';
+import 'package:arjan_startup/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:arjan_startup/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';

@@ -24,8 +24,8 @@ class MainWrapper extends StatelessWidget {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              // ✅ اصلاح شده: استفاده از متد جدید withValues برای فلاتر 3.27+
-              color: Colors.black.withValues(alpha: 0.1),
+              // ✅ اصلاح شد: جایگزینی withOpacity با withValues
+              color: Colors.black.withValues(alpha: 0.1), 
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),

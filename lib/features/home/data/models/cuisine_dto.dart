@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 class CuisineDto {
   final String id;
   final String name;
@@ -12,15 +10,16 @@ class CuisineDto {
   });
 
   factory CuisineDto.fromJson(Map<String, dynamic> json) {
-    try {
-      return CuisineDto(
-        id: json['cuisine_id'].toString(),
-        name: json['cuisine_name'] ?? json['name'] ?? 'نامشخص', // پشتیبانی از نام‌های مختلف احتمالی
-        image: json['featured_image'] ?? json['image'] ?? '',
-      );
-    } catch (e) {
-      debugPrint("❌ Error parsing CuisineDto: $e");
-      rethrow;
-    }
+    // اصلاح لینک عکس: اضافه کردن آدرس سایت به ابتدای نام فایل
+    final imageName = json['featured_image']?.toString() ?? '';
+    final imageUrl = imageName.isNotEmpty && !imageName.startsWith('http')
+        ? 'https://arjanapp.ir/upload/$imageName'
+        : (imageName.startsWith('http') ? imageName : 'https://arjanapp.ir/protected/modules/mobileappv2/assets/images/default_bg.jpg');
+
+    return CuisineDto(
+      id: json['cuisine_id']?.toString() ?? '',
+      name: json['cuisine_name']?.toString() ?? 'بدون نام',
+      image: imageUrl,
+    );
   }
 }

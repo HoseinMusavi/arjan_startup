@@ -11,9 +11,9 @@ class HomeRepositoryImpl implements HomeRepository {
   HomeRepositoryImpl(this._dataSource);
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getHomeData() async {
+  Future<Either<Failure, List<String>>> getBanners() async {
     try {
-      return Right(await _dataSource.getHomeData());
+      return Right(await _dataSource.getBanners());
     } catch (e) {
       return Left(ServerFailure("خطا در دریافت بنرها"));
     }
@@ -29,11 +29,11 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<Either<Failure, List<MerchantDto>>> getMerchants(String searchType) async {
+  Future<Either<Failure, List<MerchantDto>>> getMerchants(String searchType, double lat, double lng) async {
     try {
-      return Right(await _dataSource.getMerchants(searchType: searchType));
+      return Right(await _dataSource.getMerchants(searchType, lat, lng));
     } catch (e) {
-      return Left(ServerFailure("خطا در دریافت لیست رستوران"));
+      return Left(ServerFailure("خطا در دریافت لیست فروشگاه‌ها"));
     }
   }
 }
