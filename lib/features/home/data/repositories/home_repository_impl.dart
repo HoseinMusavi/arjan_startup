@@ -20,11 +20,12 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<Either<Failure, List<CuisineDto>>> getCuisines() async {
+  // ✅ پارامترها و ارسال آنها کاملاً هماهنگ شد
+  Future<Either<Failure, List<CuisineDto>>> getCuisines(double lat, double lng) async {
     try {
-      return Right(await _dataSource.getCuisines());
+      return Right(await _dataSource.getCuisines(lat, lng));
     } catch (e) {
-      return Left(ServerFailure("خطا در دریافت دسته‌بندی"));
+      return Left(ServerFailure("خطا در دریافت دسته‌بندی‌ها"));
     }
   }
 

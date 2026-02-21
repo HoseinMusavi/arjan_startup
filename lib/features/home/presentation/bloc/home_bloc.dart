@@ -31,22 +31,20 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(status: HomeStatus.loading));
     debugPrint("🏠 HomeBloc: Starting Parallel Fetch...");
 
-    // عرض و طول جغرافیایی فعلاً ثابت در نظر گرفته شده است (بر اساس لاگ شما).
-    // در آینده این مقادیر را از سرویس لوکیشن گوشی دریافت می‌کنیم.
+    // مقادیر لوکیشن فعلی
     double currentLat = 30.5882768;
     double currentLng = 50.2575974;
 
-    // اجرای همزمان تمام درخواست‌ها برای سرعت بالا
+    // اجرای همزمان تمامی APIها برای سرعت بالاتر
     final results = await Future.wait([
-      _repository.getBanners(),                                            // 0: بنرها
-      _repository.getCuisines(),                                           // 1: دسته‌بندی‌ها
-      _repository.getMerchants("byLatLong", currentLat, currentLng),       // 2: نزدیک‌ترین‌ها
-      _repository.getMerchants("special_Offers", currentLat, currentLng),  // 3: پیشنهادات ویژه
-      _repository.getMerchants("featuredMerchant", currentLat, currentLng),// 4: برگزیده‌ها
-      _repository.getMerchants("allMerchant", currentLat, currentLng),     // 5: همه رستوران‌ها
+      _repository.getBanners(),
+      _repository.getCuisines(currentLat, currentLng), // ✅ مشکل اینجا بود: مقادیر اضافه شد
+      _repository.getMerchants("byLatLong", currentLat, currentLng),
+      _repository.getMerchants("special_Offers", currentLat, currentLng),
+      _repository.getMerchants("featuredMerchant", currentLat, currentLng),
+      _repository.getMerchants("allMerchant", currentLat, currentLng),
     ]);
 
-    // استخراج نتایج
     List<String> banners = [];
     List<CuisineDto> cuisines = [];
     List<MerchantDto> nearby = [];
