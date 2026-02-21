@@ -4,7 +4,10 @@ import '../../data/models/cuisine_dto.dart';
 import '../../data/models/merchant_dto.dart';
 
 abstract class HomeRepository {
-  Future<Either<Failure, Map<String, dynamic>>> getHomeData();
-  Future<Either<Failure, List<CuisineDto>>> getCuisines();
-  Future<Either<Failure, List<MerchantDto>>> getMerchants(String searchType);
+  Future<Either<Failure, List<String>>> getBanners();
+  
+  // ✅ مقادیر lat و lng اینجا اضافه شد
+  Future<Either<Failure, List<CuisineDto>>> getCuisines(double lat, double lng); 
+  
+  Future<Either<Failure, List<MerchantDto>>> getMerchants(String searchType, double lat, double lng);
 }

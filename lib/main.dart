@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'; // ✅ افزوده شد
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/di/service_locator.dart';
 import 'config/theme/app_theme.dart';
 import 'config/routes/app_router.dart';
@@ -19,10 +19,12 @@ class MyApp extends StatelessWidget {
       title: 'Arjan Startup',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      
+      // ✅ نام صحیح کلاس و متغیر روتر در اینجا قرار داده شد
       routerConfig: AppRouter.router,
       
-      // ✅ تنظیمات راست‌چین (RTL)
-      locale: const Locale('fa', 'IR'), // زبان پیش‌فرض فارسی
+      // تنظیمات راست‌چین (RTL) و زبان فارسی
+      locale: const Locale('fa', 'IR'), 
       supportedLocales: const [
         Locale('fa', 'IR'),
         Locale('en', 'US'),

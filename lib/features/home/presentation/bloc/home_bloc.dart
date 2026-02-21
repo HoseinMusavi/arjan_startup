@@ -1,3 +1,5 @@
+import 'package:arjan_startup/core/error/failures.dart';
+import 'package:dartz/dartz.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -29,17 +31,20 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(status: HomeStatus.loading));
     debugPrint("🏠 HomeBloc: Starting Parallel Fetch...");
 
-    // اجرای همزمان تمام درخواست‌ها برای سرعت بالا
+    // مقادیر لوکیشن فعلی
+    double currentLat = 30.5882768;
+    double currentLng = 50.2575974;
+
+    // اجرای همزمان تمامی APIها برای سرعت بالاتر
     final results = await Future.wait([
-      _repository.getHomeData(),                  // 0: بنرها
-      _repository.getCuisines(),                  // 1: دسته‌بندی‌ها
-      _repository.getMerchants("byLatLong"),      // 2: نزدیک‌ترین‌ها
-      _repository.getMerchants("special_Offers"), // 3: پیشنهادات ویژه
-      _repository.getMerchants("featuredMerchant"),// 4: برگزیده‌ها
-      _repository.getMerchants("allMerchant"),    // 5: همه رستوران‌ها
+      _repository.getBanners(),
+      _repository.getCuisines(currentLat, currentLng), // ✅ مشکل اینجا بود: مقادیر اضافه شد
+      _repository.getMerchants("byLatLong", currentLat, currentLng),
+      _repository.getMerchants("special_Offers", currentLat, currentLng),
+      _repository.getMerchants("featuredMerchant", currentLat, currentLng),
+      _repository.getMerchants("allMerchant", currentLat, currentLng),
     ]);
 
-    // استخراج نتایج
     List<String> banners = [];
     List<CuisineDto> cuisines = [];
     List<MerchantDto> nearby = [];
@@ -47,12 +52,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     List<MerchantDto> featured = [];
     List<MerchantDto> all = [];
 
-    (results[0] as dynamic).fold((l) {}, (r) => banners = (r['banners'] as List).map((e) => e.toString()).toList());
-    (results[1] as dynamic).fold((l) {}, (r) => cuisines = r);
-    (results[2] as dynamic).fold((l) {}, (r) => nearby = r);
-    (results[3] as dynamic).fold((l) {}, (r) => offers = r);
-    (results[4] as dynamic).fold((l) {}, (r) => featured = r);
-    (results[5] as dynamic).fold((l) {}, (r) => all = r);
+    (results[0] as Either<Failure, List<String>>).fold((l) {}, (r) => banners = r);
+    (results[1] as Either<Failure, List<CuisineDto>>).fold((l) {}, (r) => cuisines = r);
+    (results[2] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => nearby = r);
+    (results[3] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => offers = r);
+    (results[4] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => featured = r);
+    (results[5] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => all = r);
 
     debugPrint("✅ Home Data Ready: ${banners.length} Banners, ${cuisines.length} Cuisines, ${nearby.length} Nearby");
 
