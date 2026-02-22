@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/merchant_dto.dart';
+import '../pages/merchant_menu_page.dart'; // ✅ اضافه شدن ایمپورت صفحه منو
 
 class MerchantCard extends StatelessWidget {
   final MerchantDto merchant;
@@ -37,7 +38,16 @@ class MerchantCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            // TODO: اکشن باز کردن صفحه منوی این رستوران
+            // ✅ اکشن باز کردن صفحه منوی رستوران و ارسال دیتا
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MerchantMenuPage(
+                  merchantId: merchant.id,
+                  merchantName: merchant.name,
+                ),
+              ),
+            );
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -47,7 +46,6 @@ class ProfilePage extends StatelessWidget {
                 final lName = state.profile.lastName;
                 final phone = state.profile.phone;
 
-                // ✅ لاجیک جدید: اولویت با نام، اگر نبود شماره تماس
                 if (fName.isNotEmpty || lName.isNotEmpty) {
                   displayName = "$fName $lName";
                 } else if (phone.isNotEmpty) {
@@ -71,7 +69,8 @@ class ProfilePage extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.grey.shade200,
-                        border: Border.all(color: Colors.orange.withOpacity(0.5), width: 3),
+                        // ✅ تغییر withOpacity به withValues
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 3),
                         image: (avatarUrl.isNotEmpty) 
                           ? DecorationImage(image: NetworkImage(avatarUrl), fit: BoxFit.cover)
                           : null,
@@ -86,7 +85,7 @@ class ProfilePage extends StatelessWidget {
                     Text(
                       displayName,
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      textDirection: TextDirection.ltr, // برای نمایش صحیح شماره تماس
+                      textDirection: TextDirection.ltr,
                     ),
                     const SizedBox(height: 8),
                     

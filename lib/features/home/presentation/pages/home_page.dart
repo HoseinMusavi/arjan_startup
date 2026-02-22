@@ -6,6 +6,8 @@ import '../bloc/home_bloc.dart';
 import '../../data/models/cuisine_dto.dart';
 import '../../data/models/merchant_dto.dart';
 
+import '../widgets/merchant_card.dart';
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -44,7 +46,7 @@ class HomePage extends StatelessWidget {
 
                   // 2. لیست افقی دسته‌بندی‌ها (اسکرول نرم)
                   if (state.cuisines.isNotEmpty) 
-                    _buildHorizontalCuisines(state.cuisines),
+                    _buildHorizontalCuisines(context, state.cuisines, primaryColor),
                   
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
@@ -102,7 +104,7 @@ class HomePage extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [primaryColor, Color(0xFFFF9500)],
+              colors: [primaryColor, const Color(0xFFFF9500)],
             ),
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
           ),
@@ -174,7 +176,7 @@ class HomePage extends StatelessWidget {
   // ==========================================
   // 🎨 بخش دوم: لیست افقی دسته‌بندی‌ها (Cuisines)
   // ==========================================
-  Widget _buildHorizontalCuisines(List<CuisineDto> cuisines) {
+  Widget _buildHorizontalCuisines(BuildContext context, List<CuisineDto> cuisines, Color primaryColor) {
     return SliverToBoxAdapter(
       child: SizedBox(
         height: 105,
@@ -187,40 +189,58 @@ class HomePage extends StatelessWidget {
             final cuisine = cuisines[index];
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 65,
-                    width: 65,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 4))
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(2), // کادر سفید دور عکس
-                    child: ClipOval(
-                      child: Image.network(
-                        cuisine.image,
-                        fit: BoxFit.cover, // ✅ حل مشکل سایز عکس‌ها
-                        errorBuilder: (c, e, s) => Icon(Icons.fastfood, color: Colors.grey.shade300, size: 30),
+              // ✅ اضافه شدن Material و InkWell برای افکت کلیک روی دسته‌بندی‌ها
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('شما روی ${cuisine.name} کلیک کردید (آیدی: ${cuisine.id})', style: const TextStyle(fontFamily: 'Vazir')),
+                        backgroundColor: primaryColor,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        duration: const Duration(seconds: 2),
                       ),
-                    ),
+                    );
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 65,
+                        width: 65,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 4))
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(2), // کادر سفید دور عکس
+                        child: ClipOval(
+                          child: Image.network(
+                            cuisine.image,
+                            fit: BoxFit.cover, // ✅ حل مشکل سایز عکس‌ها
+                            errorBuilder: (c, e, s) => Icon(Icons.fastfood, color: Colors.grey.shade300, size: 30),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: 75,
+                        child: Text(
+                          cuisine.name,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black87),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 75,
-                    child: Text(
-                      cuisine.name,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black87),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                ),
               ),
             );
           },
@@ -264,106 +284,9 @@ class HomePage extends StatelessWidget {
   }
 
   // ==========================================
-  // 🎨 بخش چهارم: کارت رستوران (کاور فیت شده + لوگوی گرد)
+  // 🎨 بخش چهارم: لیست کارت رستوران‌ها
   // ==========================================
-  Widget _buildMerchantCard(MerchantDto merchant, {required bool isHorizontal}) {
-    return Container(
-      width: isHorizontal ? 270 : double.infinity,
-      margin: EdgeInsets.only(bottom: isHorizontal ? 0 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // کاور اصلی (با مدیریت دقیق سایز)
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: AspectRatio(
-                  aspectRatio: 2.2, // ✅ نسبت تصویر ثابت برای جلوگیری از به‌هم‌ریختگی
-                  child: Image.network(
-                    merchant.background.isNotEmpty ? merchant.background : merchant.logo,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => Container(color: Colors.grey.shade100, child: const Icon(Icons.storefront, color: Colors.grey, size: 40)),
-                  ),
-                ),
-              ),
-              // سایه ملایم روی عکس
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withValues(alpha: 0.4)]),
-                  ),
-                ),
-              ),
-              // لوگوی گرد رستوران
-              Positioned(
-                bottom: -20,
-                right: 16,
-                child: Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 2))]),
-                  padding: const EdgeInsets.all(2),
-                  child: ClipOval(
-                    child: Image.network(merchant.logo, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.fastfood, color: Colors.grey)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 26),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(merchant.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15), overflow: TextOverflow.ellipsis)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(6)),
-                      child: Row(
-                        children: [
-                          Text(merchant.rating.toString(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green.shade700)),
-                          const SizedBox(width: 4),
-                          Icon(Icons.star_rounded, color: Colors.green.shade700, size: 14),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(merchant.cuisineText.isNotEmpty ? merchant.cuisineText : 'فست فود • پیتزا', style: TextStyle(color: Colors.grey.shade600, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(Icons.motorcycle_outlined, size: 16, color: Colors.grey.shade400),
-                    const SizedBox(width: 6),
-                    Text(merchant.deliveryFee == '0' || merchant.deliveryFee.isEmpty ? 'ارسال رایگان' : '${merchant.deliveryFee} تومان', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  // ==========================================
-  // متدهای کمکی و Shimmer Loading
-  // ==========================================
-  
   Widget _buildSectionTitle(String title, bool showSeeAll, Color primaryColor) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -395,7 +318,7 @@ class HomePage extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           itemCount: merchants.length,
-          itemBuilder: (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4), child: _buildMerchantCard(merchants[index], isHorizontal: true)),
+          itemBuilder: (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4), child: MerchantCard(merchant: merchants[index], isHorizontal: true)),
         ),
       ),
     );
@@ -404,7 +327,7 @@ class HomePage extends StatelessWidget {
   Widget _buildVerticalMerchants(List<MerchantDto> merchants) {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: _buildMerchantCard(merchants[index], isHorizontal: false)),
+        (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: MerchantCard(merchant: merchants[index], isHorizontal: false)),
         childCount: merchants.length,
       ),
     );
