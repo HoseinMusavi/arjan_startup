@@ -1,4 +1,8 @@
-part of 'restaurant_bloc.dart';
+import 'package:equatable/equatable.dart';
+// آدرس‌دهی مطلق مدل‌ها
+import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/menu_category_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart';
 
 enum RestaurantStatus { initial, loading, success, failure }
 enum MenuLoadingStatus { initial, loading, success, failure }

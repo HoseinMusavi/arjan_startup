@@ -6,6 +6,7 @@ import 'package:arjan_startup/core/di/service_locator.dart';
 import 'package:arjan_startup/features/restaurant/presentation/bloc/restaurant_bloc.dart';
 import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart';
 import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/menu_category_dto.dart';
 
 class MerchantMenuPage extends StatelessWidget {
   final String merchantId;

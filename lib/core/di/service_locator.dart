@@ -26,6 +26,12 @@ import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 import '../../features/profile/presentation/bloc/profile_bloc.dart';
 
+// Restaurant Feature (بخش جدید اضافه شده)
+import '../../features/restaurant/data/datasources/restaurant_remote_source.dart';
+import '../../features/restaurant/data/repositories/restaurant_repository_impl.dart';
+import '../../features/restaurant/domain/repositories/restaurant_repository.dart';
+import '../../features/restaurant/presentation/bloc/restaurant_bloc.dart';
+
 final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
@@ -88,7 +94,7 @@ Future<void> setupServiceLocator() async {
   // ---------------------------------------------------------------------------
   // 6. Features - Profile (پروفایل)
   // ---------------------------------------------------------------------------
-  // Data Source (نیاز به SharedPreferences دارد برای توکن)
+  // Data Source 
   getIt.registerLazySingleton<ProfileRemoteDataSource>(
     () => ProfileRemoteDataSourceImpl(
       getIt<DioClient>(), 
@@ -104,5 +110,23 @@ Future<void> setupServiceLocator() async {
   // Bloc
   getIt.registerFactory<ProfileBloc>(
     () => ProfileBloc(getIt<ProfileRepository>()),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 7. Features - Restaurant Menu (منوی رستوران)
+  // ---------------------------------------------------------------------------
+  // Data Source
+  getIt.registerLazySingleton<RestaurantRemoteDataSource>(
+    () => RestaurantRemoteDataSourceImpl(getIt<DioClient>()),
+  );
+
+  // Repository
+  getIt.registerLazySingleton<RestaurantRepository>(
+    () => RestaurantRepositoryImpl(getIt<RestaurantRemoteDataSource>()),
+  );
+
+  // Bloc (تعریف دقیق نوع برای جلوگیری از خطای GetIt)
+  getIt.registerFactory<RestaurantBloc>(
+    () => RestaurantBloc(getIt<RestaurantRepository>()),
   );
 }
