@@ -1,3 +1,4 @@
+import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,6 +32,11 @@ import '../../features/restaurant/data/datasources/restaurant_remote_source.dart
 import '../../features/restaurant/data/repositories/restaurant_repository_impl.dart';
 import '../../features/restaurant/domain/repositories/restaurant_repository.dart';
 import '../../features/restaurant/presentation/bloc/restaurant_bloc.dart';
+
+// Cart Feature
+import '../../features/cart/data/datasources/cart_remote_source.dart';
+import '../../features/cart/domain/repositories/cart_repository.dart';
+
 
 final getIt = GetIt.instance;
 
@@ -128,5 +134,18 @@ Future<void> setupServiceLocator() async {
   // Bloc (تعریف دقیق نوع برای جلوگیری از خطای GetIt)
   getIt.registerFactory<RestaurantBloc>(
     () => RestaurantBloc(getIt<RestaurantRepository>()),
+  );
+
+  // Cart Feature
+  // ---------------------------------------------------------------------------
+  getIt.registerLazySingleton<CartRemoteDataSource>(
+    () => CartRemoteDataSourceImpl(getIt<DioClient>()),
+  );
+  getIt.registerLazySingleton<CartRepository>(
+    () => CartRepositoryImpl(getIt<CartRemoteDataSource>()),
+  );
+
+  getIt.registerFactory<CartBloc>(
+    () => CartBloc(getIt<CartRepository>()),
   );
 }
