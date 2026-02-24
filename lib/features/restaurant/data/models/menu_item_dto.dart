@@ -4,6 +4,7 @@ class MenuItemDto {
   final String description;
   final String photo;
   final String price;
+  final String rawPrice;
 
   MenuItemDto({
     required this.id,
@@ -11,40 +12,45 @@ class MenuItemDto {
     required this.description,
     required this.photo,
     required this.price,
+    required this.rawPrice,
   });
 
   factory MenuItemDto.fromJson(Map<String, dynamic> json) {
-    // ۱. استخراج قیمت و پاکسازی فاصله‌های HTML (مثل &nbsp;)
     String finalPrice = 'نامشخص';
-    if (json['prices'] != null && json['prices'] is List && json['prices'].isNotEmpty) {
-      finalPrice = json['prices'][0].toString();
-      // تبدیل فاصله نشکن HTML به فاصله معمولی
-      finalPrice = finalPrice.replaceAll('&nbsp;', ' ').trim(); 
+    if (json['prices'] != null && json['prices'] is List && (json['prices'] as List).isNotEmpty) {
+      finalPrice = json['prices'][0].toString().replaceAll('&nbsp;', ' ').trim();
+      finalPrice = finalPrice.replaceAll(RegExp(r'<[^>]*>'), '');
     }
 
-    // ۲. استخراج توضیحات غذا
     String rawDescription = json['item_description']?.toString() ?? '';
-    
-    // ۳. جادوی اصلی: پاکسازی کامل تگ‌های HTML با استفاده از Regular Expression
-    // این کد هر چیزی که بین < و > باشد (مثل استایل‌ها و کلاس‌ها) را حذف می‌کند
-    String cleanDescription = rawDescription.replaceAll(RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false), ' ');
-    
-    // پاکسازی کاراکترهای خاص HTML که به صورت متن درآمده‌اند
-    cleanDescription = cleanDescription.replaceAll('&nbsp;', ' ');
-    cleanDescription = cleanDescription.replaceAll('&zwnj;', ' '); // نیم‌فاصله
-    cleanDescription = cleanDescription.replaceAll('&amp;', '&');
-    
-    // در نهایت حذف فاصله‌های خالی اضافی که ممکنه ایجاد شده باشه
-    cleanDescription = cleanDescription.trim();
-    // جلوگیری از فاصله‌های چندگانه وسط متن
-    cleanDescription = cleanDescription.replaceAll(RegExp(r'\s+'), ' ');
+    String cleanDescription = rawDescription.replaceAll(RegExp(r'</p>|<br\s*/?>', caseSensitive: false), '\n');
+    cleanDescription = cleanDescription.replaceAll(RegExp(r'<[^>]*>'), '');
+    cleanDescription = cleanDescription.replaceAll('&nbsp;', ' ').replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&lt;', '<').replaceAll('&gt;', '>');
+    cleanDescription = cleanDescription.replaceAll(RegExp(r'\n+'), '\n').trim();
+
+    // ✅ پردازش هوشمندانه قیمت خام برای ارسال به سرور
+    String priceForServer = '';
+    try {
+      if (json['price'] != null) {
+        String pStr = json['price'].toString();
+        // پاک کردن کاراکترهای اضافی آرایه و آبجکت
+        pStr = pStr.replaceAll('{', '').replaceAll('}', '').replaceAll('[', '').replaceAll(']', '').replaceAll('"', '').replaceAll("'", '');
+        if (pStr.contains(':')) {
+           var p = pStr.split(':');
+           priceForServer = '${p[0].trim()}|${p[1].trim()}'; 
+        } else {
+           priceForServer = pStr.trim(); 
+        }
+      }
+    } catch(e) {}
 
     return MenuItemDto(
       id: json['item_id']?.toString() ?? '',
       name: json['item_name']?.toString() ?? 'بدون نام',
-      description: cleanDescription, // متن کاملاً تمیز و خالص فرستاده می‌شود
+      description: cleanDescription,
       photo: json['photo']?.toString() ?? '',
-      price: finalPrice, // قیمت تمیز شده
+      price: finalPrice,
+      rawPrice: priceForServer, // ✅ ذخیره قیمت خام با فرمت مورد تایید بک‌اند
     );
   }
 }

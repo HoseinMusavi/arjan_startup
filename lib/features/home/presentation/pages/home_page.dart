@@ -1,3 +1,4 @@
+import 'package:arjan_startup/features/cart/presentation/pages/cart_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
@@ -7,8 +8,6 @@ import 'package:arjan_startup/features/home/presentation/bloc/home_bloc.dart';
 import 'package:arjan_startup/features/home/data/models/cuisine_dto.dart';
 import 'package:arjan_startup/features/home/data/models/merchant_dto.dart';
 import 'package:arjan_startup/features/home/presentation/widgets/merchant_card.dart';
-
-// ✅ اضافه شدن CartBloc برای بررسی موجودی سبد خرید
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
 
 class HomePage extends StatelessWidget {
@@ -19,12 +18,12 @@ class HomePage extends StatelessWidget {
     const Color primaryColor = Color(0xFFFF7A00);
     const Color bgColor = Color(0xFFF8F9FA); 
 
-    // ✅ استفاده از MultiBlocProvider تا بتوانیم وضعیت سبد خرید را در هدر چک کنیم
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => getIt<HomeBloc>()..add(HomeStarted())),
-        BlocProvider.value(value: getIt<CartBloc>()), // وصل شدن به سبد خرید گلوبال
-      ],
+    return BlocProvider(
+      create: (context) {
+        // ✅ ارسال جای خالی ('') باعث میشود که به صورت هوشمند سبد رستوران فعال پیدا شود
+        getIt<CartBloc>().add(const LoadCartCount('', 30.5882768, 50.2575974));
+        return getIt<HomeBloc>()..add(HomeStarted());
+      },
       child: Scaffold(
         backgroundColor: bgColor,
         body: BlocBuilder<HomeBloc, HomeState>(
@@ -42,7 +41,7 @@ class HomePage extends StatelessWidget {
               backgroundColor: Colors.white,
               onRefresh: () async {
                 context.read<HomeBloc>().add(HomeRefreshed());
-                // می‌توانید سبد خرید را هم با رفرش صفحه چک کنید
+                getIt<CartBloc>().add(const LoadCartCount('', 30.5882768, 50.2575974));
               },
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -82,9 +81,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // 🎨 بخش هدر حرفه‌ای همراه با آیکون سبد خرید
-  // ==========================================
   Widget _buildAnimatedSliverHeader(Color primaryColor) {
     return SliverAppBar(
       backgroundColor: primaryColor,
@@ -133,13 +129,13 @@ class HomePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  // ✅ آیکون سبد خرید همراه با Badge
                   BlocBuilder<CartBloc, CartState>(
+                    bloc: getIt<CartBloc>(),
                     builder: (context, cartState) {
                       return IconButton(
                         splashRadius: 24,
                         onPressed: () {
-                          // TODO: انتقال به صفحه سبد خرید
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
                         },
                         icon: Stack(
                           clipBehavior: Clip.none,
@@ -151,15 +147,8 @@ class HomePage extends StatelessWidget {
                                 top: -4,
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade600,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: primaryColor, width: 1.5),
-                                  ),
-                                  child: Text(
-                                    '${cartState.cartCount}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
-                                  ),
+                                  decoration: BoxDecoration(color: Colors.red.shade600, shape: BoxShape.circle, border: Border.all(color: primaryColor, width: 1.5)),
+                                  child: Text('${cartState.cartCount}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                                 ),
                               ),
                           ],
@@ -185,7 +174,7 @@ class HomePage extends StatelessWidget {
                 const SizedBox(width: 16),
                 Icon(Icons.search_rounded, color: primaryColor, size: 24),
                 const SizedBox(width: 10),
-                Text('جستجو در آرژان فود...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text('جستجو در ارجان فود...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -194,9 +183,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // بقیه متدها بدون تغییر هستند
-  // ==========================================
   Widget _buildHorizontalCuisines(BuildContext context, List<CuisineDto> cuisines, Color primaryColor) {
     return SliverToBoxAdapter(
       child: SizedBox(
@@ -211,7 +197,9 @@ class HomePage extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () {},
+                  onTap: () {
+                 
+                  },
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

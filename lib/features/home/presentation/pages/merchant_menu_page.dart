@@ -1,3 +1,4 @@
+import 'package:arjan_startup/features/cart/presentation/pages/cart_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
@@ -8,7 +9,7 @@ import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart
 import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
 
-class MerchantMenuPage extends StatelessWidget {
+class MerchantMenuPage extends StatefulWidget {
   final String merchantId;
   final String merchantName;
 
@@ -19,96 +20,146 @@ class MerchantMenuPage extends StatelessWidget {
   });
 
   @override
+  State<MerchantMenuPage> createState() => _MerchantMenuPageState();
+}
+
+class _MerchantMenuPageState extends State<MerchantMenuPage> {
+  @override
+  void initState() {
+    super.initState();
+    getIt<CartBloc>().add(LoadCartCount(widget.merchantId, 30.5882768, 50.2575974));
+  }
+
+  void _showConflictDialog(BuildContext context, CartState state) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('سبد خرید فعال است!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: const Text('شما محصولاتی از یک رستوران دیگر در سبد خرید دارید. برای خرید از این رستوران، سبد قبلی حذف خواهد شد. موافقید؟', style: TextStyle(height: 1.5, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('خیر، انصراف', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF7A00),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (state.pendingItem != null && state.pendingMerchantId != null && state.pendingCategoryId != null) {
+                getIt<CartBloc>().add(ClearCartAndAddItem(
+                  item: state.pendingItem!,
+                  merchantId: state.pendingMerchantId!,
+                  categoryId: state.pendingCategoryId!,
+                  lat: 30.5882768,
+                  lng: 50.2575974,
+                ));
+              }
+            },
+            child: const Text('بله، سبد جدید بساز', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFFF7A00);
-    const double lat = 30.5882768;
-    const double lng = 50.2575974;
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => getIt<RestaurantBloc>()..add(RestaurantStarted(merchantId, lat, lng))),
-        // ✅ استفاده از Bloc سراسری برای جلوگیری از پاک شدن سبد خرید هنگام خروج از صفحه
-        BlocProvider.value(value: getIt<CartBloc>()..add(LoadCartCount(merchantId, lat, lng))),
-      ],
+    return BlocProvider(
+      create: (context) => getIt<RestaurantBloc>()..add(RestaurantStarted(widget.merchantId, 30.5882768, 50.2575974)),
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
-        body: BlocBuilder<RestaurantBloc, RestaurantState>(
-          builder: (context, state) {
-            if (state.status == RestaurantStatus.initial || state.status == RestaurantStatus.loading) {
-              return _buildShimmerLoading();
-            }
+        // ✅ لیسنر برای دیالوگ تداخل رستوران
+        body: MultiBlocListener(
+          listeners: [
+            BlocListener<CartBloc, CartState>(
+              bloc: getIt<CartBloc>(),
+              listenWhen: (previous, current) => current.status == CartStatus.conflict,
+              listener: (context, state) {
+                if (state.status == CartStatus.conflict) {
+                  _showConflictDialog(context, state);
+                }
+              },
+            ),
+          ],
+          child: BlocBuilder<RestaurantBloc, RestaurantState>(
+            builder: (context, state) {
+              if (state.status == RestaurantStatus.initial || state.status == RestaurantStatus.loading) {
+                return _buildShimmerLoading();
+              }
 
-            if (state.status == RestaurantStatus.failure) {
-              return Center(child: Text(state.errorMessage));
-            }
+              if (state.status == RestaurantStatus.failure) {
+                return Center(child: Text(state.errorMessage));
+              }
 
-            final info = state.info;
-            if (info == null) return const Center(child: Text('اطلاعات یافت نشد'));
+              final info = state.info;
+              if (info == null) return const Center(child: Text('اطلاعات یافت نشد'));
 
-            return CustomScrollView(
-              slivers: [
-                _buildSliverAppBar(info, primaryColor),
-                
-                if (state.categories.isNotEmpty)
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _CategoryTabDelegate(
-                      child: Container(
-                        color: Colors.white,
-                        height: 60,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          itemCount: state.categories.length,
-                          itemBuilder: (context, index) {
-                            final category = state.categories[index];
-                            final isSelected = state.selectedCategoryId == category.id;
+              return CustomScrollView(
+                slivers: [
+                  _buildSliverAppBar(info, primaryColor),
+                  
+                  if (state.categories.isNotEmpty)
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _CategoryTabDelegate(
+                        child: Container(
+                          color: Colors.white,
+                          height: 60,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            itemCount: state.categories.length,
+                            itemBuilder: (context, index) {
+                              final category = state.categories[index];
+                              final isSelected = state.selectedCategoryId == category.id;
 
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () => context.read<RestaurantBloc>().add(CategoryChanged(category.id)),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? primaryColor : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    category.name,
-                                    style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade700, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500),
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: () => context.read<RestaurantBloc>().add(CategoryChanged(category.id)),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    decoration: BoxDecoration(color: isSelected ? primaryColor : Colors.grey.shade100, borderRadius: BorderRadius.circular(20)),
+                                    alignment: Alignment.center,
+                                    child: Text(category.name, style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade700, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                if (state.menuStatus == MenuLoadingStatus.loading)
-                  const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: primaryColor)))
-                else if (state.items.isEmpty)
-                  const SliverFillRemaining(child: Center(child: Text('آیتمی در این دسته وجود ندارد')))
-                else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return _buildMenuItem(context, state.items[index], state.selectedCategoryId, primaryColor, merchantId, lat, lng);
-                      },
-                      childCount: state.items.length,
+                  if (state.menuStatus == MenuLoadingStatus.loading)
+                    const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: primaryColor)))
+                  else if (state.items.isEmpty)
+                    const SliverFillRemaining(child: Center(child: Text('آیتمی در این دسته وجود ندارد')))
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          return _buildMenuItem(state.items[index], state.selectedCategoryId, primaryColor, widget.merchantId, 30.5882768, 50.2575974);
+                        },
+                        childCount: state.items.length,
+                      ),
                     ),
-                  ),
-                  
-                  const SliverToBoxAdapter(child: SizedBox(height: 90)),
-              ],
-            );
-          },
+                    
+                    const SliverToBoxAdapter(child: SizedBox(height: 90)),
+                ],
+              );
+            },
+          ),
         ),
         bottomNavigationBar: BlocBuilder<CartBloc, CartState>(
+          bloc: getIt<CartBloc>(),
           builder: (context, cartState) {
             if (cartState.cartCount > 0) {
               return _buildFloatingCartBar(cartState);
@@ -124,29 +175,18 @@ class MerchantMenuPage extends StatelessWidget {
     return Container(
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3))],
-      ),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3))]),
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green.shade600, 
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-        onPressed: () { // ✅ ارور حل شد (onTap به onPressed تغییر کرد)
-          // انتقال به سبد خرید در فازهای بعدی
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 16)),
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: Text('${cartState.cartCount}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
+                Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle), child: Text('${cartState.cartCount}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
                 const SizedBox(width: 12),
                 const Text('مشاهده سبد خرید', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ],
@@ -161,7 +201,8 @@ class MerchantMenuPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, MenuItemDto item, String categoryId, Color primaryColor, String merchantId, double lat, double lng) {
+  // ✅ در اینجا تمام خطاهای RenderFlex (زرد و مشکی) حل شده‌اند
+  Widget _buildMenuItem(MenuItemDto item, String categoryId, Color primaryColor, String merchantId, double lat, double lng) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
@@ -169,21 +210,25 @@ class MerchantMenuPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
+          Expanded( // ⬅️ کاملاً محصور در Expanded برای جلوگیری از ارور
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // ⬅️ حیاتی برای ارور RenderFlex
               children: [
-                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 6),
                 Text(item.description.isNotEmpty ? item.description : 'بدون توضیحات', style: TextStyle(color: Colors.grey.shade500, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(item.price != 'نامشخص' ? '${item.price} تومان' : 'نامشخص', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primaryColor)),
+                    Expanded( // ⬅️ حیاتی برای متون قیمت که طولانی هستند
+                      child: Text(item.price != 'نامشخص' ? '${item.price} تومان' : 'نامشخص', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primaryColor), overflow: TextOverflow.ellipsis, maxLines: 1),
+                    ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () {
-                        context.read<CartBloc>().add(AddItemToCart(item: item, merchantId: merchantId, categoryId: categoryId, lat: lat, lng: lng));
+                        getIt<CartBloc>().add(AddItemToCart(item: item, merchantId: merchantId, categoryId: categoryId, lat: lat, lng: lng));
                       },
                       borderRadius: BorderRadius.circular(8),
                       child: Container(

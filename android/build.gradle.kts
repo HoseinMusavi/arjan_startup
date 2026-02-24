@@ -1,10 +1,5 @@
 allprojects {
     repositories {
-        // میرور pup-azs
-        maven { url = uri("https://pub-azs.ir/api/mavens/") }
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
-        
         google()
         mavenCentral()
     }
