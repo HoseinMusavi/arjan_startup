@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import '../../../../core/error/failures.dart';
-import '../../data/models/restaurant_info_dto.dart';
-import '../../data/models/menu_category_dto.dart';
-import '../../data/models/menu_item_dto.dart';
+import 'package:arjan_startup/core/error/failures.dart';
+import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/menu_category_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart';
 
 abstract class RestaurantRepository {
   Future<Either<Failure, RestaurantInfoDto>> getRestaurantInfo(String merchantId, double lat, double lng);

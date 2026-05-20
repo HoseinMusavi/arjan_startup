@@ -15,7 +15,6 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
 
   CartRemoteDataSourceImpl(this._dioClient);
 
-  // پارامترهای ثابت طبق لاگ شما
   final Map<String, dynamic> _baseParams = {
     'device_id': 'device_01231',
     'device_platform': 'android',
@@ -30,12 +29,13 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       final data = {'merchant_id': merchantId, 'lat': lat, 'lng': lng, ..._baseParams};
       final response = await _dioClient.post('/getCartCount/', data: data);
       
-      if (response.data['details'] != null && response.data['details'] is Map) {
+      if (response.data['code'] == 1 && response.data['details'] != null) {
         return CartCountDto.fromJson(response.data['details']);
       }
       return CartCountDto(count: 0, basketCount: '0', basketTotal: '0 تومان');
     } catch (e) {
-      throw Exception('خطا در دریافت اطلاعات سبد خرید');
+      log('❌ خطا در getCartCount: $e');
+      return CartCountDto(count: 0, basketCount: '0', basketTotal: '0 تومان');
     }
   }
 
@@ -78,13 +78,46 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
 
       final response = await _dioClient.get('/loadCart', queryParameters: queryParams);
       
+      // ✅ هندل کردن کدهای مختلف
       if (response.data['code'] == 1 && response.data['details'] != null) {
+        // سبد خرید با موفقیت دریافت شد
         return CartDetailsDto.fromJson(response.data['details']);
+      } else if (response.data['code'] == 4) {
+        // فروشگاه غیرفعال - برگرداندن سبد خرید خالی بدون خطا
+        log('⚠️ فروشگاه غیرفعال است (code 4) برای merchant_id: $merchantId');
+        return CartDetailsDto(
+          merchantName: '',
+          merchantLogo: '',
+          items: [],
+          subtotal: 0,
+          deliveryCharges: 0,
+          total: 0,
+          availablePoints: 0,
+        );
       } else {
-        throw Exception(response.data['msg'] ?? 'سبد خرید شما خالی است');
+        // سبد خالی یا خطای دیگر - برگرداندن سبد خالی
+        log('⚠️ سبد خرید خالی یا خطای دیگر برای merchant_id: $merchantId, code: ${response.data['code']}');
+        return CartDetailsDto(
+          merchantName: '',
+          merchantLogo: '',
+          items: [],
+          subtotal: 0,
+          deliveryCharges: 0,
+          total: 0,
+          availablePoints: 0,
+        );
       }
     } catch (e) {
-      throw Exception('خطا در دریافت جزئیات فاکتور');
+      log('❌ خطا در دریافت جزئیات فاکتور: $e');
+      return CartDetailsDto(
+        merchantName: '',
+        merchantLogo: '',
+        items: [],
+        subtotal: 0,
+        deliveryCharges: 0,
+        total: 0,
+        availablePoints: 0,
+      );
     }
   }
 }

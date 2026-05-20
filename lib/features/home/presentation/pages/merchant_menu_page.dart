@@ -1,4 +1,5 @@
 import 'package:arjan_startup/features/cart/presentation/pages/cart_page.dart';
+import 'package:arjan_startup/features/restaurant/domain/repositories/restaurant_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
@@ -74,9 +75,9 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
       create: (context) => getIt<RestaurantBloc>()..add(RestaurantStarted(widget.merchantId, 30.5882768, 50.2575974)),
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
-        // ✅ لیسنر برای دیالوگ تداخل رستوران
         body: MultiBlocListener(
           listeners: [
+            // ✅ لیسنر برای دیالوگ تداخل رستوران
             BlocListener<CartBloc, CartState>(
               bloc: getIt<CartBloc>(),
               listenWhen: (previous, current) => current.status == CartStatus.conflict,
@@ -86,6 +87,25 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
                 }
               },
             ),
+            // ✅✅✅ لیسنر جدید برای نمایش پیام خطا (مثل فروشگاه غیرفعال) ✅✅✅
+         BlocListener<CartBloc, CartState>(
+  bloc: getIt<CartBloc>(),
+  listenWhen: (previous, current) => 
+      current.status == CartStatus.failure && current.errorMessage.isNotEmpty,
+  listener: (context, state) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(state.errorMessage),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    // ✅ بعد از نمایش خطا، وضعیت رو ریست کن تا دفعه بعد دوباره کار کنه
+    Future.delayed(const Duration(milliseconds: 100), () {
+      getIt<CartBloc>().emit(state.copyWith(status: CartStatus.success, errorMessage: ''));
+    });
+  },
+),
           ],
           child: BlocBuilder<RestaurantBloc, RestaurantState>(
             builder: (context, state) {
@@ -201,53 +221,104 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
     );
   }
 
-  // ✅ در اینجا تمام خطاهای RenderFlex (زرد و مشکی) حل شده‌اند
   Widget _buildMenuItem(MenuItemDto item, String categoryId, Color primaryColor, String merchantId, double lat, double lng) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded( // ⬅️ کاملاً محصور در Expanded برای جلوگیری از ارور
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // ⬅️ حیاتی برای ارور RenderFlex
-              children: [
-                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                Text(item.description.isNotEmpty ? item.description : 'بدون توضیحات', style: TextStyle(color: Colors.grey.shade500, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded( // ⬅️ حیاتی برای متون قیمت که طولانی هستند
-                      child: Text(item.price != 'نامشخص' ? '${item.price} تومان' : 'نامشخص', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primaryColor), overflow: TextOverflow.ellipsis, maxLines: 1),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () {
-                        getIt<CartBloc>().add(AddItemToCart(item: item, merchantId: merchantId, categoryId: categoryId, lat: lat, lng: lng));
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8)),
-                        child: Text('افزودن', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+              Text(item.description.isNotEmpty ? item.description : 'بدون توضیحات', style: TextStyle(color: Colors.grey.shade500, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(item.price != 'نامشخص' ? '${item.price} تومان' : 'نامشخص', 
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primaryColor), 
+                      overflow: TextOverflow.ellipsis, 
+                      maxLines: 1),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () async {
+                      // ✅ چک کردن وضعیت فروشگاه قبل از افزودن به سبد
+                      final cartBloc = getIt<CartBloc>();
+                      final restaurantRepo = getIt<RestaurantRepository>();
+                      final result = await restaurantRepo.getRestaurantInfo(merchantId, lat, lng);
+                      
+                      result.fold(
+                        (failure) => null,
+                        (info) {
+                          // بررسی باز بودن فروشگاه
+                          if (info.status != 'باز است' && info.status != 'open' && info.status != 'Open') {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.'),
+                                backgroundColor: Colors.red,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                            return;
+                          }
+                          // اگر فروشگاه باز بود، به سبد خرید اضافه کن
+                          cartBloc.add(AddItemToCart(
+                            item: item,
+                            merchantId: merchantId,
+                            categoryId: categoryId,
+                            lat: lat,
+                            lng: lng,
+                          ));
+                        },
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: Text('افزودن', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            item.photo,
+            width: 90,
+            height: 90,
+            fit: BoxFit.cover,
+            errorBuilder: (c, e, s) => Container(
+              width: 90,
+              height: 90,
+              color: Colors.grey.shade100,
+              child: const Icon(Icons.fastfood, color: Colors.grey),
             ),
           ),
-          const SizedBox(width: 12),
-          ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(item.photo, width: 90, height: 90, fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(width: 90, height: 90, color: Colors.grey.shade100, child: const Icon(Icons.fastfood, color: Colors.grey)))),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildSliverAppBar(RestaurantInfoDto info, Color primaryColor) {
     return SliverAppBar(

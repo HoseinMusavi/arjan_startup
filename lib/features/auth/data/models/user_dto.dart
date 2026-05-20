@@ -2,16 +2,11 @@ import '../../domain/entities/user_entity.dart';
 
 class UserDto extends UserEntity {
   const UserDto({
-    required String token,
-    required String firstName,
-    required String lastName,
-    required String phone,
-  }) : super(
-          token: token,
-          firstName: firstName,
-          lastName: lastName,
-          phone: phone,
-        );
+    required super.token,
+    required super.firstName,
+    required super.lastName,
+    required super.phone,
+  });
 
   factory UserDto.fromJson(Map<String, dynamic> json) {
     // 1. پیدا کردن محل واقعی دیتا (پشتیبانی از client_info برای لاگین)
