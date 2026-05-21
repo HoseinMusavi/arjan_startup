@@ -1,12 +1,10 @@
 import 'dart:developer';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// آدرس‌دهی مطلق ریپازیتوری و مدل‌ها
 import 'package:arjan_startup/features/restaurant/domain/repositories/restaurant_repository.dart';
 import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
 import 'package:arjan_startup/features/restaurant/data/models/menu_category_dto.dart';
 
-// ✅ استفاده از ایمپورت و اکسپورت به جای part
 import 'restaurant_event.dart';
 import 'restaurant_state.dart';
 
@@ -23,6 +21,7 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
   RestaurantBloc(this._repository) : super(const RestaurantState()) {
     on<RestaurantStarted>(_onStarted);
     on<CategoryChanged>(_onCategoryChanged);
+    on<LoadItemDetails>(_onLoadItemDetails);  // ✅ اضافه شده
   }
 
   Future<void> _onStarted(RestaurantStarted event, Emitter<RestaurantState> emit) async {
@@ -80,6 +79,31 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     itemsResult.fold(
       (failure) => emit(state.copyWith(menuStatus: MenuLoadingStatus.failure, errorMessage: failure.message)),
       (data) => emit(state.copyWith(menuStatus: MenuLoadingStatus.success, items: data)),
+    );
+  }
+
+  // ✅ اضافه شده: دریافت جزئیات یک غذا
+  Future<void> _onLoadItemDetails(LoadItemDetails event, Emitter<RestaurantState> emit) async {
+    log('🍽️ [RestaurantBloc] دریافت جزئیات غذا: ${event.itemId}');
+    emit(state.copyWith(itemDetailsStatus: ItemDetailsStatus.loading));
+    
+    final result = await _repository.getItemDetails(
+      event.merchantId, 
+      event.itemId, 
+      event.categoryId, 
+      event.lat, 
+      event.lng,
+    );
+    
+    result.fold(
+      (failure) => emit(state.copyWith(
+        itemDetailsStatus: ItemDetailsStatus.failure, 
+        errorMessage: failure.message,
+      )),
+      (data) => emit(state.copyWith(
+        itemDetailsStatus: ItemDetailsStatus.success, 
+        selectedItem: data,
+      )),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:arjan_startup/features/cart/presentation/pages/cart_page.dart';
 import 'package:arjan_startup/features/restaurant/domain/repositories/restaurant_repository.dart';
+import 'package:arjan_startup/features/restaurant/presentation/pages/item_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
@@ -28,10 +29,12 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
   @override
   void initState() {
     super.initState();
+    print('🏪 [MERCHANT_PAGE] ورود به صفحه فروشگاه: ${widget.merchantName} (ID: ${widget.merchantId})');
     getIt<CartBloc>().add(LoadCartCount(widget.merchantId, 30.5882768, 50.2575974));
   }
 
   void _showConflictDialog(BuildContext context, CartState state) {
+    print('⚠️ [MERCHANT_PAGE] نمایش دیالوگ تداخل سبد خرید');
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -49,6 +52,7 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
+              print('✅ [MERCHANT_PAGE] کاربر تایید کرد سبد جدید ساخته شود');
               Navigator.pop(ctx);
               if (state.pendingItem != null && state.pendingMerchantId != null && state.pendingCategoryId != null) {
                 getIt<CartBloc>().add(ClearCartAndAddItem(
@@ -77,7 +81,6 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
         backgroundColor: Colors.grey.shade50,
         body: MultiBlocListener(
           listeners: [
-            // ✅ لیسنر برای دیالوگ تداخل رستوران
             BlocListener<CartBloc, CartState>(
               bloc: getIt<CartBloc>(),
               listenWhen: (previous, current) => current.status == CartStatus.conflict,
@@ -87,25 +90,21 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
                 }
               },
             ),
-            // ✅✅✅ لیسنر جدید برای نمایش پیام خطا (مثل فروشگاه غیرفعال) ✅✅✅
-         BlocListener<CartBloc, CartState>(
-  bloc: getIt<CartBloc>(),
-  listenWhen: (previous, current) => 
-      current.status == CartStatus.failure && current.errorMessage.isNotEmpty,
-  listener: (context, state) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(state.errorMessage),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    // ✅ بعد از نمایش خطا، وضعیت رو ریست کن تا دفعه بعد دوباره کار کنه
-    Future.delayed(const Duration(milliseconds: 100), () {
-      getIt<CartBloc>().emit(state.copyWith(status: CartStatus.success, errorMessage: ''));
-    });
-  },
-),
+            BlocListener<CartBloc, CartState>(
+              bloc: getIt<CartBloc>(),
+              listenWhen: (previous, current) => 
+                  current.status == CartStatus.failure && current.errorMessage.isNotEmpty,
+              listener: (context, state) {
+                print('❌ [MERCHANT_PAGE] خطا: ${state.errorMessage}');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.errorMessage),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              },
+            ),
           ],
           child: BlocBuilder<RestaurantBloc, RestaurantState>(
             builder: (context, state) {
@@ -199,6 +198,7 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 16)),
         onPressed: () {
+          print('🛒 [MERCHANT_PAGE] رفتن به صفحه سبد خرید');
           Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
         },
         child: Row(
@@ -221,101 +221,131 @@ class _MerchantMenuPageState extends State<MerchantMenuPage> {
     );
   }
 
-  Widget _buildMenuItem(MenuItemDto item, String categoryId, Color primaryColor, String merchantId, double lat, double lng) {
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 6),
-              Text(item.description.isNotEmpty ? item.description : 'بدون توضیحات', style: TextStyle(color: Colors.grey.shade500, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(item.price != 'نامشخص' ? '${item.price} تومان' : 'نامشخص', 
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primaryColor), 
-                      overflow: TextOverflow.ellipsis, 
-                      maxLines: 1),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () async {
-                      // ✅ چک کردن وضعیت فروشگاه قبل از افزودن به سبد
-                      final cartBloc = getIt<CartBloc>();
-                      final restaurantRepo = getIt<RestaurantRepository>();
-                      final result = await restaurantRepo.getRestaurantInfo(merchantId, lat, lng);
-                      
-                      result.fold(
-                        (failure) => null,
-                        (info) {
-                          // بررسی باز بودن فروشگاه
-                          if (info.status != 'باز است' && info.status != 'open' && info.status != 'Open') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.'),
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 3),
-                              ),
-                            );
-                            return;
-                          }
-                          // اگر فروشگاه باز بود، به سبد خرید اضافه کن
-                          cartBloc.add(AddItemToCart(
-                            item: item,
-                            merchantId: merchantId,
-                            categoryId: categoryId,
-                            lat: lat,
-                            lng: lng,
-                          ));
-                        },
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('افزودن', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+ Widget _buildMenuItem(MenuItemDto item, String categoryId, Color primaryColor, String merchantId, double lat, double lng) {
+  return InkWell(
+    onTap: () {
+      print('🍽️ [MENU] کلیک روی غذا: ${item.name} (ID: ${item.id})');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ItemDetailsPage(
+            merchantId: merchantId,
+            itemId: item.id,
+            categoryId: categoryId,
+            merchantName: widget.merchantName,
+            itemName: item.name,
           ),
         ),
-        const SizedBox(width: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            item.photo,
-            width: 90,
-            height: 90,
-            fit: BoxFit.cover,
-            errorBuilder: (c, e, s) => Container(
-              width: 90,
-              height: 90,
-              color: Colors.grey.shade100,
-              child: const Icon(Icons.fastfood, color: Colors.grey),
+      );
+    },
+    borderRadius: BorderRadius.circular(16),
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 6),
+                Text(item.description.isNotEmpty ? item.description : 'بدون توضیحات', style: TextStyle(color: Colors.grey.shade500, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(item.price != 'نامشخص' ? '${item.price} تومان' : 'نامشخص', 
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primaryColor), 
+                        overflow: TextOverflow.ellipsis, 
+                        maxLines: 1),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () async {
+                        print('🛒 [MENU] شروع افزودن آیتم: ${item.name} (ID: ${item.id}) به فروشگاه: $merchantId');
+                        
+                        final cartBloc = getIt<CartBloc>();
+                        final restaurantRepo = getIt<RestaurantRepository>();
+                        
+                        print('📡 [MENU] درخواست بررسی وضعیت فروشگاه: $merchantId');
+                        final result = await restaurantRepo.getRestaurantInfo(merchantId, lat, lng);
+                        
+                        result.fold(
+                          (failure) {
+                            print('❌ [MENU] خطا در دریافت اطلاعات فروشگاه: ${failure.message}');
+                          },
+                          (info) {
+                            print('📋 [MENU] اطلاعات فروشگاه دریافت شد: نام=${info.name}, status="${info.status}"');
+                            
+                            final isOpen = info.status == 'باز است' || info.status == 'open' || info.status == 'Open';
+                            print('🔍 [MENU] وضعیت فروشگاه: isOpen=$isOpen, status="${info.status}"');
+                            
+                            if (!isOpen) {
+                              print('⛔ [MENU] فروشگاه بسته است! نمایش پیام خطا');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.'),
+                                  backgroundColor: Colors.red,
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                              return;
+                            }
+                            
+                            print('✅ [MENU] فروشگاه باز است، ارسال رویداد AddItemToCart');
+                            cartBloc.add(AddItemToCart(
+                              item: item,
+                              merchantId: merchantId,
+                              categoryId: categoryId,
+                              lat: lat,
+                              lng: lng,
+                            ));
+                            print('📤 [MENU] رویداد AddItemToCart ارسال شد');
+                          },
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('افزودن', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              item.photo,
+              width: 90,
+              height: 90,
+              fit: BoxFit.cover,
+              errorBuilder: (c, e, s) => Container(
+                width: 90,
+                height: 90,
+                color: Colors.grey.shade100,
+                child: const Icon(Icons.fastfood, color: Colors.grey),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }

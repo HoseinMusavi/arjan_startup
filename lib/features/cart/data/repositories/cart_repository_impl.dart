@@ -49,4 +49,17 @@ class CartRepositoryImpl implements CartRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  // ✅ اضافه شده
+  @override
+  Future<Either<Failure, CartDetailsDto>> getFirstCart(double lat, double lng) async {
+    try {
+      print('🛒 [REPO] دریافت اولین سبد خرید');
+      final result = await _dataSource.getFirstCart(lat, lng);
+      return Right(result);
+    } catch (e) {
+      print('❌ [REPO] خطا در getFirstCart: $e');
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

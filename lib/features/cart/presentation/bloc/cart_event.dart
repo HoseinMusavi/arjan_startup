@@ -46,7 +46,6 @@ class LoadCartDetails extends CartEvent {
   List<Object> get props => [lat, lng];
 }
 
-// رویداد برای حذف آیتم از سبد خرید
 class RemoveItemFromCart extends CartEvent {
   final String itemId;
   final double lat;
@@ -56,7 +55,6 @@ class RemoveItemFromCart extends CartEvent {
   List<Object> get props => [itemId, lat, lng];
 }
 
-// رویداد برای آپدیت تعداد آیتم
 class UpdateItemQuantity extends CartEvent {
   final String itemId;
   final int quantity;
@@ -65,4 +63,13 @@ class UpdateItemQuantity extends CartEvent {
   const UpdateItemQuantity({required this.itemId, required this.quantity, required this.lat, required this.lng});
   @override
   List<Object> get props => [itemId, quantity, lat, lng];
+}
+
+// ✅ اضافه شد
+class LoadFirstCart extends CartEvent {
+  final double lat;
+  final double lng;
+  const LoadFirstCart(this.lat, this.lng);
+  @override
+  List<Object> get props => [lat, lng];
 }

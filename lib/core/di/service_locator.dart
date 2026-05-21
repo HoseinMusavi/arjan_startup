@@ -1,3 +1,4 @@
+import 'package:arjan_startup/features/cart/data/repositories/cart_repository_impl.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

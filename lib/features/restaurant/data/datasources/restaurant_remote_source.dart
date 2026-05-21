@@ -3,11 +3,13 @@ import '../../../../core/network/dio_client.dart';
 import '../models/restaurant_info_dto.dart';
 import '../models/menu_category_dto.dart';
 import '../models/menu_item_dto.dart';
+import '../models/item_details_dto.dart';  // ✅ اضافه شده - این فایل رو بعداً می‌سازیم
 
 abstract class RestaurantRemoteDataSource {
   Future<RestaurantInfoDto?> getRestaurantInfo(String merchantId, double lat, double lng);
   Future<List<MenuCategoryDto>> getMenuCategories(String merchantId, double lat, double lng);
   Future<List<MenuItemDto>> getItemsByCategory(String merchantId, String categoryId, double lat, double lng);
+  Future<ItemDetailsDto?> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng);  // ✅ اضافه شده
 }
 
 class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
@@ -81,6 +83,36 @@ class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
     } catch (e) {
       log('❌ [API Error] خطا در دریافت غذاهای دسته‌بندی: $e');
       return [];
+    }
+  }
+
+  // ✅ اضافه شده: دریافت جزئیات یک غذا
+  @override
+  Future<ItemDetailsDto?> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng) async {
+    log('🌐 [API Call] درخواست جزئیات غذا (ItemID: $itemId) برای رستوران (ID: $merchantId)');
+    try {
+      final response = await _dioClient.get(
+        '/itemDetails',
+        queryParameters: {
+          'merchant_id': merchantId,
+          'item_id': itemId,
+          'cat_id': categoryId,
+          'lat': lat,
+          'lng': lng,
+        },
+      );
+
+      final data = response.data;
+      if (data['code'] == 1 && data['details'] != null) {
+        log('✅ [API Success] جزئیات غذا با موفقیت دریافت شد.');
+        return ItemDetailsDto.fromJson(data['details']);
+      } else {
+        log('⚠️ [API Warning] خطا در دریافت جزئیات غذا: ${data['msg']}');
+        return null;
+      }
+    } catch (e) {
+      log('❌ [API Error] خطا در دریافت جزئیات غذا: $e');
+      return null;
     }
   }
 }

@@ -6,6 +6,7 @@ import '../datasources/restaurant_remote_source.dart';
 import '../models/restaurant_info_dto.dart';
 import '../models/menu_category_dto.dart';
 import '../models/menu_item_dto.dart';
+import '../models/item_details_dto.dart';  // ✅ اضافه شده
 
 class RestaurantRepositoryImpl implements RestaurantRepository {
   final RestaurantRemoteDataSource _dataSource;
@@ -46,6 +47,20 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
     } catch (e) {
       log('❌ [Repo] خطا: $e');
       return Left(ServerFailure("خطای ارتباط با سرور در دریافت غذاها"));
+    }
+  }
+
+  // ✅ اضافه شده
+  @override
+  Future<Either<Failure, ItemDetailsDto>> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng) async {
+    log('🔄 [Repo] درخواست جزئیات غذا به دیتاسورس ارسال شد.');
+    try {
+      final result = await _dataSource.getItemDetails(merchantId, itemId, categoryId, lat, lng);
+      if (result != null) return Right(result);
+      return Left(ServerFailure("جزئیات غذا یافت نشد"));
+    } catch (e) {
+      log('❌ [Repo] خطا: $e');
+      return Left(ServerFailure("خطای ارتباط با سرور در دریافت جزئیات غذا"));
     }
   }
 }

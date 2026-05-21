@@ -26,3 +26,23 @@ class CategoryChanged extends RestaurantEvent {
   @override
   List<Object> get props => [categoryId];
 }
+
+// ✅ اضافه شده: رویداد برای دریافت جزئیات یک غذا
+class LoadItemDetails extends RestaurantEvent {
+  final String merchantId;
+  final String itemId;
+  final String categoryId;
+  final double lat;
+  final double lng;
+
+  const LoadItemDetails({
+    required this.merchantId,
+    required this.itemId,
+    required this.categoryId,
+    required this.lat,
+    required this.lng,
+  });
+
+  @override
+  List<Object> get props => [merchantId, itemId, categoryId, lat, lng];
+}

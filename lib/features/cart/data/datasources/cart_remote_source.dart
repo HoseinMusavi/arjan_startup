@@ -8,6 +8,7 @@ abstract class CartRemoteDataSource {
   Future<AddToCartResponseDto> addToCart(Map<String, dynamic> payload);
   Future<void> clearCart(String merchantId);
   Future<CartDetailsDto> getCartDetails(String merchantId, double lat, double lng);
+  Future<CartDetailsDto> getFirstCart(double lat, double lng);  // ✅ اضافه شد
 }
 
 class CartRemoteDataSourceImpl implements CartRemoteDataSource {
@@ -78,12 +79,9 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
 
       final response = await _dioClient.get('/loadCart', queryParameters: queryParams);
       
-      // ✅ هندل کردن کدهای مختلف
       if (response.data['code'] == 1 && response.data['details'] != null) {
-        // سبد خرید با موفقیت دریافت شد
         return CartDetailsDto.fromJson(response.data['details']);
       } else if (response.data['code'] == 4) {
-        // فروشگاه غیرفعال - برگرداندن سبد خرید خالی بدون خطا
         log('⚠️ فروشگاه غیرفعال است (code 4) برای merchant_id: $merchantId');
         return CartDetailsDto(
           merchantName: '',
@@ -95,7 +93,6 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
           availablePoints: 0,
         );
       } else {
-        // سبد خالی یا خطای دیگر - برگرداندن سبد خالی
         log('⚠️ سبد خرید خالی یا خطای دیگر برای merchant_id: $merchantId, code: ${response.data['code']}');
         return CartDetailsDto(
           merchantName: '',
@@ -109,6 +106,48 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       }
     } catch (e) {
       log('❌ خطا در دریافت جزئیات فاکتور: $e');
+      return CartDetailsDto(
+        merchantName: '',
+        merchantLogo: '',
+        items: [],
+        subtotal: 0,
+        deliveryCharges: 0,
+        total: 0,
+        availablePoints: 0,
+      );
+    }
+  }
+
+  // ✅ اضافه شده: دریافت اولین سبد خرید
+  @override
+  Future<CartDetailsDto> getFirstCart(double lat, double lng) async {
+    try {
+      final queryParams = {
+        'lat': lat,
+        'lng': lng,
+        ..._baseParams,
+      };
+
+      print('🛒 [API] درخواست getFirstCart با پارامترهای: $queryParams');
+      final response = await _dioClient.get('/getFirstCart', queryParameters: queryParams);
+      
+      print('🛒 [API] پاسخ getFirstCart: ${response.data}');
+      
+      if (response.data['code'] == 1 && response.data['details'] != null) {
+        return CartDetailsDto.fromJson(response.data['details']);
+      } else {
+        return CartDetailsDto(
+          merchantName: '',
+          merchantLogo: '',
+          items: [],
+          subtotal: 0,
+          deliveryCharges: 0,
+          total: 0,
+          availablePoints: 0,
+        );
+      }
+    } catch (e) {
+      print('❌ [API] خطا در getFirstCart: $e');
       return CartDetailsDto(
         merchantName: '',
         merchantLogo: '',
