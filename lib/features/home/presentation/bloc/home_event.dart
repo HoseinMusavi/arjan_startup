@@ -8,9 +8,20 @@ abstract class HomeEvent extends Equatable {
 }
 
 class HomeStarted extends HomeEvent {
-  // این رویداد وقتی صفحه باز می‌شود صدا زده می‌شود
+  // ✅ اضافه کردن پارامتر cuisineId برای فیلتر
+  final String? cuisineId;
+  
+  const HomeStarted({this.cuisineId});
+  
+  @override
+  List<Object> get props => [cuisineId ?? ''];
 }
 
 class HomeRefreshed extends HomeEvent {
-  // این رویداد وقتی کاربر صفحه را پایین می‌کشد (Pull to Refresh) صدا زده می‌شود
+  final String? cuisineId;
+  
+  const HomeRefreshed({this.cuisineId});
+  
+  @override
+  List<Object> get props => [cuisineId ?? ''];
 }

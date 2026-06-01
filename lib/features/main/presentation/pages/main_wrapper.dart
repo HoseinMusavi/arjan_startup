@@ -1,5 +1,8 @@
+import 'package:arjan_startup/core/enums/store_type.dart';
+import 'package:arjan_startup/core/providers/store_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class MainWrapper extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -9,87 +12,135 @@ class MainWrapper extends StatelessWidget {
     required this.navigationShell,
   });
 
-  void _goBranch(int index) {
+  void _goBranch(int index, BuildContext context) {
+    final storeType = _getStoreTypeFromIndex(index);
+    if (storeType != null) {
+      context.read<StoreProvider>().setStore(storeType);
+    }
+    
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
     );
   }
 
+  StoreType? _getStoreTypeFromIndex(int index) {
+    switch (index) {
+      case 0:
+        return StoreType.restaurant;
+      case 1:
+        return StoreType.supermarket;
+      case 2:
+        return StoreType.locations;
+      case 3:
+        return StoreType.profile;
+      default:
+        return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFFFF7A00); // نارنجی آرژان
-    const Color bgColor = Color(0xFFF8F9FA);
+    final currentIndex = navigationShell.currentIndex;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: const Color(0xFFF8F9FA),
       body: navigationShell,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03), // سایه بسیار محو و ظریف
-              blurRadius: 15,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: SizedBox(
-            height: 58, // ⬅️ ارتفاع بسیار جمع‌وجور و مینیمال
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildMinimalCompactNavItem(
-                  index: 0,
-                  iconOutline: Icons.home_outlined,
-                  iconFilled: Icons.home_rounded,
-                  label: 'خانه',
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _goBranch(0),
-                  primaryColor: primaryColor,
-                ),
-                _buildMinimalCompactNavItem(
-                  index: 1,
-                  iconOutline: Icons.receipt_long_outlined,
-                  iconFilled: Icons.receipt_long_rounded,
-                  label: 'سفارشات',
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _goBranch(1),
-                  primaryColor: primaryColor,
-                ),
-                _buildMinimalCompactNavItem(
-                  index: 2,
-                  iconOutline: Icons.person_outline_rounded,
-                  iconFilled: Icons.person_rounded,
-                  label: 'پروفایل',
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: () => _goBranch(2),
-                  primaryColor: primaryColor,
+      bottomNavigationBar: Consumer<StoreProvider>(
+        builder: (context, storeProvider, _) {
+          // ✅ دریافت رنگ بر اساس تب فعال
+          final activeColor = _getColorForIndex(currentIndex, storeProvider);
+          
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 15,
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
-          ),
-        ),
+            child: SafeArea(
+              child: SizedBox(
+                height: 58,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildNavItem(
+                      index: 0,
+                      label: 'رستوران',
+                      iconOutline: Icons.restaurant_outlined,
+                      iconFilled: Icons.restaurant_rounded,
+                      isSelected: currentIndex == 0,
+                      selectedColor: activeColor,
+                      onTap: () => _goBranch(0, context),
+                    ),
+                    _buildNavItem(
+                      index: 1,
+                      label: 'سوپرمارکت',
+                      iconOutline: Icons.store_outlined,
+                      iconFilled: Icons.store_rounded,
+                      isSelected: currentIndex == 1,
+                      selectedColor: activeColor,
+                      onTap: () => _goBranch(1, context),
+                    ),
+                    _buildNavItem(
+                      index: 2,
+                      label: 'سفارشات',
+                      iconOutline: Icons.receipt_long_outlined,
+                      iconFilled: Icons.receipt_long_rounded,
+                      isSelected: currentIndex == 2,
+                      selectedColor: activeColor,
+                      onTap: () => _goBranch(2, context),
+                    ),
+                    _buildNavItem(
+                      index: 3,
+                      label: 'پروفایل',
+                      iconOutline: Icons.person_outline_rounded,
+                      iconFilled: Icons.person_rounded,
+                      isSelected: currentIndex == 3,
+                      selectedColor: activeColor,
+                      onTap: () => _goBranch(3, context),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  // ====================================================================
-  // 🎨 ویجت نویگیشن بار جمع‌وجور با انیمیشن ریز و روان
-  // ====================================================================
-  Widget _buildMinimalCompactNavItem({
+  // ✅ تابع برای تعیین رنگ بر اساس تب فعال
+  Color _getColorForIndex(int index, StoreProvider storeProvider) {
+    switch (index) {
+      case 0:
+        return StoreType.restaurant.primaryColor;
+      case 1:
+        return StoreType.supermarket.primaryColor;
+      case 2:
+        return StoreType.locations.primaryColor;
+      case 3:
+        return StoreType.profile.primaryColor;
+      default:
+        return storeProvider.currentStore.primaryColor;
+    }
+  }
+
+  Widget _buildNavItem({
     required int index,
+    required String label,
     required IconData iconOutline,
     required IconData iconFilled,
-    required String label,
-    required int currentIndex,
+    required bool isSelected,
+    required Color selectedColor,
     required VoidCallback onTap,
-    required Color primaryColor,
   }) {
-    final isSelected = index == currentIndex;
-
+    final Color itemColor = isSelected ? selectedColor : Colors.grey.shade400;
+    
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -100,7 +151,6 @@ class MainWrapper extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1️⃣ انیمیشن تعویض آیکون (ظریف و نرم)
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 transitionBuilder: (Widget child, Animation<double> animation) {
@@ -113,34 +163,31 @@ class MainWrapper extends StatelessWidget {
                     ? Icon(
                         iconFilled,
                         key: ValueKey<String>('filled_$index'),
-                        color: primaryColor,
-                        size: 25, // ⬅️ سایز ظریف‌تر در حالت فعال
+                        color: itemColor,
+                        size: 25,
                       )
                     : Icon(
                         iconOutline,
                         key: ValueKey<String>('outline_$index'),
-                        color: Colors.grey.shade400,
-                        size: 24, // ⬅️ سایز ظریف‌تر در حالت غیرفعال
+                        color: itemColor,
+                        size: 24,
                       ),
               ),
-
-              // 2️⃣ انیمیشن باز شدن متن با ارتفاع کمتر برای جلوگیری از پرش زیاد
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
-                height: isSelected ? 16 : 0, // ⬅️ ارتفاع جمع‌وجورتر برای باز شدن متن
+                height: isSelected ? 16 : 0,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 250),
                   opacity: isSelected ? 1.0 : 0.0,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 2), // فاصله ریز
+                    padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       label,
                       style: TextStyle(
-                        color: primaryColor,
-                        fontSize: 10, // ⬅️ فونت مینیمال و شیک
+                        color: itemColor,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        fontFamily: 'Vazir',
                       ),
                     ),
                   ),

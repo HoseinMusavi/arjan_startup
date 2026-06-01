@@ -1,8 +1,11 @@
+import 'package:arjan_startup/features/cart/presentation/pages/checkout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:arjan_startup/core/di/service_locator.dart';
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:arjan_startup/features/cart/presentation/bloc/cart_event.dart';
+import 'package:arjan_startup/features/cart/presentation/bloc/cart_state.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -13,12 +16,108 @@ class CartPage extends StatefulWidget {
 
 class _CartPageState extends State<CartPage> {
   final formatCurrency = NumberFormat.currency(locale: 'fa_IR', symbol: '', decimalDigits: 0);
+  final CartBloc _cartBloc = getIt<CartBloc>();
 
   @override
   void initState() {
     super.initState();
-    // درخواست لود دیتای فاکتور در لحظه ورود
-    getIt<CartBloc>().add(const LoadCartDetails(30.5882768, 50.2575974));
+    debugPrint('🛒 [CART_PAGE] صفحه سبد خرید باز شد');
+    _cartBloc.add(const LoadCartDetails(30.5882768, 50.2575974));
+  }
+
+  Future<void> _clearCart() async {
+    debugPrint('🗑️ [CART_PAGE] درخواست خالی کردن سبد خرید');
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('حذف همه موارد', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('آیا از حذف تمام آیتم‌های سبد خرید اطمینان دارید؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('انصراف', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف همه', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      debugPrint('❌ [CART_PAGE] انصراف از خالی کردن سبد');
+      return;
+    }
+
+    debugPrint('🔄 [CART_PAGE] شروع فرآیند خالی کردن سبد خرید');
+    
+    final activeMerchantId = _cartBloc.getActiveMerchantId();
+    if (activeMerchantId.isEmpty) {
+      debugPrint('⚠️ [CART_PAGE] هیچ فروشگاه فعالی برای خالی کردن سبد وجود ندارد');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('سبد خرید خالی است'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    debugPrint('🗑️ [CART_PAGE] ارسال درخواست clearCart برای فروشگاه: $activeMerchantId');
+    
+    final result = await _cartBloc.clearCart(activeMerchantId, 30.5882768, 50.2575974);
+    
+    result.fold(
+      (failure) {
+        debugPrint('❌ [CART_PAGE] خطا در خالی کردن سبد: ${failure.message}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا: ${failure.message}'), backgroundColor: Colors.red),
+        );
+      },
+      (_) {
+        debugPrint('✅ [CART_PAGE] سبد خرید با موفقیت خالی شد');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('سبد خرید خالی شد'), backgroundColor: Colors.green),
+        );
+      },
+    );
+  }
+
+  void _goToCheckout() {
+    final activeMerchantId = _cartBloc.getActiveMerchantId();
+    
+    // ✅ اصلاح: دریافت total از state.cartDetails یا state.basketTotal
+    double total = 0;
+    if (_cartBloc.state.cartDetails != null) {
+      total = _cartBloc.state.cartDetails!.total;
+    } else if (_cartBloc.state.basketTotal.isNotEmpty) {
+      // تبدیل String به double
+      final cleanTotal = _cartBloc.state.basketTotal.replaceAll(RegExp(r'[^0-9]'), '');
+      total = double.tryParse(cleanTotal) ?? 0;
+    }
+    
+    debugPrint('🛒 [CART_PAGE] رفتن به صفحه تسویه - merchantId: $activeMerchantId, total: $total');
+    
+    if (activeMerchantId.isEmpty || total <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('سبد خرید خالی است'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutPage(
+          merchantId: activeMerchantId,
+          totalAmount: total,
+        ),
+      ),
+    );
   }
 
   @override
@@ -33,9 +132,25 @@ class _CartPageState extends State<CartPage> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black87),
         title: const Text('سبد خرید', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18)),
+        actions: [
+          BlocBuilder<CartBloc, CartState>(
+            bloc: _cartBloc,
+            builder: (context, state) {
+              if (state.cartCount > 0) {
+                return IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: _clearCart,
+                  tooltip: 'خالی کردن سبد خرید',
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: BlocBuilder<CartBloc, CartState>(
-        bloc: getIt<CartBloc>(),
+        bloc: _cartBloc,
         builder: (context, state) {
           if (state.status == CartStatus.loading && state.cartDetails == null) {
             return const Center(child: CircularProgressIndicator(color: primaryColor));
@@ -46,6 +161,7 @@ class _CartPageState extends State<CartPage> {
           }
 
           final details = state.cartDetails!;
+          debugPrint('💰 [CART_PAGE] نمایش سبد خرید - total: ${details.total}, subtotal: ${details.subtotal}');
 
           return CustomScrollView(
             physics: const BouncingScrollPhysics(),
@@ -56,7 +172,6 @@ class _CartPageState extends State<CartPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // مشخصات رستوران
                       Row(
                         children: [
                           Container(
@@ -75,28 +190,22 @@ class _CartPageState extends State<CartPage> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
-                      // لیست غذاها
                       const Text('سفارش‌های شما', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
                       const SizedBox(height: 12),
                       ...details.items.map((item) => _buildCartItem(item, primaryColor)),
-                      
                       const SizedBox(height: 24),
-                      
-                      // فاکتور پرداخت
                       _buildReceiptCard(details, primaryColor),
                     ],
                   ),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)), // فضای تنفس پایین صفحه
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           );
         },
       ),
-      // نوار چسبان تایید پرداخت
       bottomSheet: BlocBuilder<CartBloc, CartState>(
-        bloc: getIt<CartBloc>(),
+        bloc: _cartBloc,
         builder: (context, state) {
           if (state.cartCount == 0 || state.cartDetails == null || state.cartDetails!.items.isEmpty) {
             return const SizedBox.shrink();
@@ -125,19 +234,12 @@ class _CartPageState extends State<CartPage> {
               ],
             ),
           ),
-          // کنترل‌گر تعداد (موقتا دکمه‌های دکوری تا فاز بعدی که متدهای update/delete رو اضافه کنیم)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
-            child: Row(
-              children: [
-                Icon(Icons.add, color: primaryColor, size: 22),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Text('${item.qty}', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: 16)),
-                ),
-                Icon(item.qty == 1 ? Icons.delete_outline : Icons.remove, color: primaryColor, size: 22),
-              ],
+            child: Text(
+              '${item.qty}',
+              style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: 16),
             ),
           ),
         ],
@@ -190,12 +292,16 @@ class _CartPageState extends State<CartPage> {
     return Container(
       height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
+      ),
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-        onPressed: () {
-          // در فاز بعدی (ثبت آدرس و درگاه بانکی)
-        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: _goToCheckout,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

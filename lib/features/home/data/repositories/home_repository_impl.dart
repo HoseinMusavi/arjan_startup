@@ -20,7 +20,6 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  // ✅ پارامترها و ارسال آنها کاملاً هماهنگ شد
   Future<Either<Failure, List<CuisineDto>>> getCuisines(double lat, double lng) async {
     try {
       return Right(await _dataSource.getCuisines(lat, lng));
@@ -30,9 +29,14 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<Either<Failure, List<MerchantDto>>> getMerchants(String searchType, double lat, double lng) async {
+  Future<Either<Failure, List<MerchantDto>>> getMerchants(
+    String searchType, 
+    double lat, 
+    double lng, {
+    String? cuisineId,
+  }) async {
     try {
-      return Right(await _dataSource.getMerchants(searchType, lat, lng));
+      return Right(await _dataSource.getMerchants(searchType, lat, lng, cuisineId: cuisineId));
     } catch (e) {
       return Left(ServerFailure("خطا در دریافت لیست فروشگاه‌ها"));
     }

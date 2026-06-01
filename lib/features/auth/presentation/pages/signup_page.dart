@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/di/service_locator.dart';
+import 'package:arjan_startup/core/di/service_locator.dart';
 import '../bloc/auth_bloc.dart';
 
 class SignupPage extends StatefulWidget {
@@ -14,170 +13,203 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final TextEditingController nameController = TextEditingController();
-  late TextEditingController mobileController;
-  final TextEditingController passwordController = TextEditingController();
-
-  // برای کنترل وضعیت ارسال کد
-  bool isOtpSent = false;
-  final TextEditingController otpController = TextEditingController();
-  String? tempToken; // نگهداری توکن موقت
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  
+  late final AuthBloc _authBloc;
+  bool _isLoading = false;
+  bool _agreeTerms = false;
 
   @override
   void initState() {
     super.initState();
-    mobileController = TextEditingController(text: widget.mobileNumber ?? '');
+    _authBloc = getIt<AuthBloc>();
+    if (widget.mobileNumber != null && widget.mobileNumber!.isNotEmpty) {
+      _mobileController.text = widget.mobileNumber!;
+    }
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _mobileController.dispose();
+    super.dispose();
+  }
+
+  void _handleSignup() {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_agreeTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لطفاً قوانین را بپذیرید'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    
+    _authBloc.add(CreateAccountRequested(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      mobile: _mobileController.text.trim(),
+      lat: 30.5882768,
+      lng: 50.2575974,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
-      child: Scaffold(
+    const Color primaryColor = Color(0xFFFF7A00);
+    const Color bgColor = Color(0xFFF8F9FA);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
         backgroundColor: Colors.white,
-        appBar: AppBar(title: const Text("ثبت نام"), centerTitle: true),
-        body: BlocConsumer<AuthBloc, AuthState>(
-          listener: (context, state) {
-            // ۱. کد ارسال شد
-            if (state is OtpSentSuccess) {
-              setState(() {
-                isOtpSent = true;
-                tempToken = state.token;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("کد تایید ارسال شد"), backgroundColor: Colors.green),
-              );
-            }
+        elevation: 0,
+        centerTitle: true,
+        title: const Text('ثبت‌نام', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: BlocListener<AuthBloc, AuthState>(
+        bloc: _authBloc,
+        listener: (context, state) {
+          setState(() => _isLoading = false);
+          
+          if (state is AuthSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('ثبت‌نام با موفقیت انجام شد'), backgroundColor: Colors.green),
+            );
+            Navigator.pushReplacementNamed(context, '/home');
+          } else if (state is AuthFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                
+                // نام
+                const Text('نام', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _firstNameController,
+                  decoration: InputDecoration(
+                    hintText: 'مثال: علی',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 2)),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'لطفاً نام خود را وارد کنید' : null,
+                ),
+                const SizedBox(height: 16),
 
-            // ۲. موفقیت نهایی (ورود)
-            if (state is AuthSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("خوش آمدید!"), backgroundColor: Colors.green),
-              );
-              context.go('/home');
-            }
+                // نام خانوادگی
+                const Text('نام خانوادگی', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _lastNameController,
+                  decoration: InputDecoration(
+                    hintText: 'مثال: احمدی',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 2)),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'لطفاً نام خانوادگی خود را وارد کنید' : null,
+                ),
+                const SizedBox(height: 16),
 
-            // ۳. خطا
-            if (state is AuthFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-              );
-            }
-          },
-          builder: (context, state) {
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                // شماره موبایل
+                const Text('شماره موبایل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _mobileController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: 'مثال: 09123456789',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 2)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'لطفاً شماره موبایل را وارد کنید';
+                    if (value.length < 11) return 'شماره موبایل باید ۱۱ رقم باشد';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // پذیرش قوانین
+                Row(
                   children: [
-                    const Text(
-                      "ایجاد حساب جدید",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    Checkbox(
+                      value: _agreeTerms,
+                      onChanged: (val) => setState(() => _agreeTerms = val ?? false),
+                      activeColor: primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    const SizedBox(height: 32),
-
-                    // شماره موبایل
-                    TextField(
-                      controller: mobileController,
-                      keyboardType: TextInputType.phone,
-                      enabled: !isOtpSent,
-                      decoration: InputDecoration(
-                        labelText: "شماره موبایل",
-                        prefixIcon: const Icon(Icons.phone_android),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    Expanded(
+                      child: Text(
+                        'قوانین و مقررات را می‌پذیرم',
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // اگر هنوز کد ارسال نشده، فیلدهای نام و رمز را نشان بده (جهت پر کردن)
-                    // نکته: در این API فعلاً فقط موبایل اولویت دارد، اما فیلدها را نگه می‌داریم
-                    if (!isOtpSent) ...[
-                      TextField(
-                        controller: nameController,
-                        decoration: InputDecoration(
-                          labelText: "نام و نام خانوادگی",
-                          prefixIcon: const Icon(Icons.person_outline),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: "رمز عبور",
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ] else ...[
-                      // فیلد کد تایید
-                      TextField(
-                        controller: otpController,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        maxLength: 6,
-                        decoration: InputDecoration(
-                          labelText: "کد تایید پیامک شده",
-                          prefixIcon: const Icon(Icons.sms),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          counterText: "",
-                        ),
-                      ),
-                    ],
-                    
-                    const SizedBox(height: 24),
-
-                    // دکمه عملیات
-                    if (state is AuthLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      ElevatedButton(
-                        onPressed: () {
-                          final mobile = mobileController.text;
-                          
-                          if (mobile.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("لطفاً شماره موبایل را وارد کنید")),
-                            );
-                            return;
-                          }
-
-                          if (isOtpSent) {
-                            // مرحله دوم: تایید کد
-                            final otp = otpController.text;
-                            if (otp.length < 4) return;
-                            
-                            // فراخوانی متد تایید
-                            context.read<AuthBloc>().add(
-                              VerifyOtpRequested(mobile: mobile, otp: otp, token: tempToken!)
-                            );
-                          } else {
-                            // مرحله اول: ارسال کد (شروع ثبت نام)
-                            // از SendOtpRequested استفاده می‌کنیم چون AuthRegister حذف شده
-                            context.read<AuthBloc>().add(SendOtpRequested(mobile));
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.green,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text(isOtpSent ? "تایید نهایی" : "دریافت کد تایید", style: const TextStyle(fontSize: 16)),
-                      ),
-                      
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text("قبلاً ثبت نام کرده‌اید؟ ورود"),
-                    )
                   ],
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 24),
+
+                // دکمه ثبت‌نام
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleSignup,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('ثبت‌نام', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                
+                // لینک برگشت به لاگین
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('حساب کاربری دارید؟', style: TextStyle(color: Colors.grey.shade600)),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('ورود', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

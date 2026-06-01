@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
-// ایمپورت‌های ضروری
 import '../../core/di/service_locator.dart';
+import '../../core/providers/store_provider.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/main/presentation/pages/main_wrapper.dart';
-// ایمپورت صفحه پروفایل که الان تصحیح کردیم
 import '../../features/profile/presentation/bloc/pages/profile_page.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
   static final GlobalKey<NavigatorState> _shellNavigatorHomeKey = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
-  static final GlobalKey<NavigatorState> _shellNavigatorLocationsKey = GlobalKey<NavigatorState>(debugLabel: 'shellLocations');
+  static final GlobalKey<NavigatorState> _shellNavigatorSupermarketKey = GlobalKey<NavigatorState>(debugLabel: 'shellSupermarket');
+  static final GlobalKey<NavigatorState> _shellNavigatorOrdersKey = GlobalKey<NavigatorState>(debugLabel: 'shellOrders');
   static final GlobalKey<NavigatorState> _shellNavigatorProfileKey = GlobalKey<NavigatorState>(debugLabel: 'shellProfile');
 
   static final GoRouter router = GoRouter(
@@ -62,13 +63,15 @@ class AppRouter {
         },
       ),
 
-      // بدنه اصلی همراه با تب‌های پایین (Bottom Navigation Bar)
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return MainWrapper(navigationShell: navigationShell);
+          return ChangeNotifierProvider(
+            create: (_) => StoreProvider(),
+            child: MainWrapper(navigationShell: navigationShell),
+          );
         },
         branches: [
-          // تب ۱: خانه
+          // تب ۰: رستوران‌ها
           StatefulShellBranch(
             navigatorKey: _shellNavigatorHomeKey,
             routes: [
@@ -80,15 +83,27 @@ class AppRouter {
             ],
           ),
           
-          // تب ۲: مکان‌ها (هنوز فایلش را نساخته‌اید، موقت می‌گذاریم)
+          // تب ۱: سوپرمارکت (همون صفحه خانه ولی با فیلتر)
           StatefulShellBranch(
-            navigatorKey: _shellNavigatorLocationsKey,
+            navigatorKey: _shellNavigatorSupermarketKey,
             routes: [
               GoRoute(
-                path: '/locations',
-                name: 'locations',
+                path: '/supermarket',
+                name: 'supermarket',
+                builder: (context, state) => const HomePage(), // ✅ استفاده مجدد از HomePage
+              ),
+            ],
+          ),
+
+          // تب ۲: سفارشات (فعلاً placeholder)
+          StatefulShellBranch(
+            navigatorKey: _shellNavigatorOrdersKey,
+            routes: [
+              GoRoute(
+                path: '/orders',
+                name: 'orders',
                 builder: (context, state) => const Scaffold(
-                  body: Center(child: Text('صفحه مکان‌ها به زودی...')),
+                  body: Center(child: Text('صفحه سفارشات به زودی...')),
                 ),
               ),
             ],

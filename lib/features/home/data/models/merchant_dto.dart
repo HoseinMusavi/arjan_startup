@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class MerchantDto {
   final String id;
   final String name;
@@ -8,6 +10,7 @@ class MerchantDto {
   final double rating;
   final String deliveryFee;
   final String openStatus;
+  final String cuisineId;
 
   MerchantDto({
     required this.id,
@@ -19,19 +22,23 @@ class MerchantDto {
     required this.rating,
     required this.deliveryFee,
     required this.openStatus,
+    required this.cuisineId,
   });
 
   factory MerchantDto.fromJson(Map<String, dynamic> json) {
-    // گرفتن امتیاز با امنیت بالا
     double ratingVal = 0.0;
     if (json['rating'] is Map) {
       ratingVal = double.tryParse(json['rating']['ratings']?.toString() ?? '0') ?? 0.0;
     }
 
-    // مرتب‌سازی قیمت ارسال
     String dFee = json['delivery_charges']?.toString() ?? '0';
     if (dFee.endsWith('.00000')) dFee = dFee.replaceAll('.00000', '');
 
+    final cuisineIdValue = json['cuisine_id']?.toString() ?? '';
+    
+    // ✅ لاگ برای دیباگ
+    debugPrint('📦 [MerchantDto] ساخت فروشگاه: ${json['restaurant_name']}, cuisineId=$cuisineIdValue');
+    
     return MerchantDto(
       id: json['merchant_id']?.toString() ?? '',
       name: json['restaurant_name']?.toString() ?? 'بدون نام',
@@ -42,6 +49,7 @@ class MerchantDto {
       rating: ratingVal,
       deliveryFee: dFee,
       openStatus: json['open_status']?.toString() ?? '',
+      cuisineId: cuisineIdValue,
     );
   }
 }

@@ -1,20 +1,23 @@
+import 'package:arjan_startup/core/enums/store_type.dart';
 import 'package:flutter/material.dart';
 import '../../data/models/merchant_dto.dart';
-import '../pages/merchant_menu_page.dart'; // ✅ اضافه شدن ایمپورت صفحه منو
+import '../../../restaurant/presentation/pages/merchant_menu_page.dart';
 
 class MerchantCard extends StatelessWidget {
   final MerchantDto merchant;
   final bool isHorizontal;
+  final StoreType storeType;
 
   const MerchantCard({
     super.key,
     required this.merchant,
     this.isHorizontal = false,
+    this.storeType = StoreType.restaurant,
   });
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFFFF7A00); // تم نارنجی اپلیکیشن
+    final Color primaryColor = storeType.primaryColor;
     final bool isFreeDelivery = merchant.deliveryFee == '0' || merchant.deliveryFee.isEmpty;
 
     return Container(
@@ -22,29 +25,28 @@ class MerchantCard extends StatelessWidget {
       margin: EdgeInsets.only(bottom: isHorizontal ? 0 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20), // گوشه‌های گرد و مدرن‌تر
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade100, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05), // سایه بسیار نرم و حرفه‌ای
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 6),
           ),
         ],
       ),
-      // استفاده از Material و InkWell برای افکت کلیک (UX)
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            // ✅ اکشن باز کردن صفحه منوی رستوران و ارسال دیتا
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => MerchantMenuPage(
                   merchantId: merchant.id,
                   merchantName: merchant.name,
+                  storeType: storeType,  // ✅ این خط رو حتما اضافه کن
                 ),
               ),
             );
@@ -52,17 +54,13 @@ class MerchantCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ==============================
-              // بخش بالایی: کاور، لوگو و تگ‌ها
-              // ==============================
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // ۱. تصویر کاور اصلی
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     child: AspectRatio(
-                      aspectRatio: 2.3, // تناسب دقیق برای جلوگیری از دفرمه شدن
+                      aspectRatio: 2.3,
                       child: Image.network(
                         merchant.background.isNotEmpty ? merchant.background : merchant.logo,
                         fit: BoxFit.cover,
@@ -73,8 +71,6 @@ class MerchantCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
-                  // ۲. گرادیانت تیره در پایین کاور برای زیبایی بیشتر
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
@@ -84,14 +80,12 @@ class MerchantCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6), // لایه تیره
+                            Colors.black.withValues(alpha: 0.6),
                           ],
                         ),
                       ),
                     ),
                   ),
-
-                  // ۳. دکمه لایک (علاقه‌مندی‌ها) بالا چپ
                   Positioned(
                     top: 12,
                     left: 12,
@@ -104,8 +98,6 @@ class MerchantCard extends StatelessWidget {
                       child: const Icon(Icons.favorite_border_rounded, size: 18, color: Colors.black54),
                     ),
                   ),
-
-                  // ۴. تگ فاصله مکانی پایین چپ
                   if (merchant.distance.isNotEmpty)
                     Positioned(
                       bottom: 12,
@@ -113,7 +105,7 @@ class MerchantCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.4), // شیشه‌ای تیره
+                          color: Colors.black.withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -128,8 +120,6 @@ class MerchantCard extends StatelessWidget {
                         ),
                       ),
                     ),
-
-                  // ۵. لوگوی کاملاً گرد رستوران (پایین سمت راست)
                   Positioned(
                     bottom: -24,
                     right: 16,
@@ -139,11 +129,11 @@ class MerchantCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3.5), // حاشیه ضخیم سفید شبیه اینستاگرام
+                        border: Border.all(color: Colors.white, width: 3.5),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1), 
-                            blurRadius: 8, 
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
                             offset: const Offset(0, 3),
                           )
                         ],
@@ -159,17 +149,12 @@ class MerchantCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 32), // فضای جبرانی برای بیرون‌زدگی لوگو
-              
-              // ==============================
-              // بخش پایینی: اطلاعات متنی
-              // ==============================
+              const SizedBox(height: 32),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // نام فروشگاه و امتیاز
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -200,17 +185,13 @@ class MerchantCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    
-                    // نوع غذای فروشگاه
                     Text(
-                      merchant.cuisineText.isNotEmpty ? merchant.cuisineText : 'فست فود • ایرانی',
+                      merchant.cuisineText.isNotEmpty ? merchant.cuisineText : (storeType == StoreType.supermarket ? 'سوپرمارکت' : 'فست فود • ایرانی'),
                       style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 16),
-                    
-                    // هزینه ارسال و وضعیت
                     Row(
                       children: [
                         Container(
@@ -220,24 +201,21 @@ class MerchantCard extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Icons.motorcycle_outlined, 
-                            size: 15, 
+                            Icons.motorcycle_outlined,
+                            size: 15,
                             color: isFreeDelivery ? primaryColor : Colors.grey.shade500,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          isFreeDelivery ? 'ارسال رایگان' : 'ارسال ${merchant.deliveryFee} تومان', 
+                          isFreeDelivery ? 'ارسال رایگان' : 'ارسال ${merchant.deliveryFee} تومان',
                           style: TextStyle(
-                            fontSize: 12, 
-                            color: isFreeDelivery ? primaryColor : Colors.grey.shade700, 
+                            fontSize: 12,
+                            color: isFreeDelivery ? primaryColor : Colors.grey.shade700,
                             fontWeight: isFreeDelivery ? FontWeight.bold : FontWeight.w600,
                           ),
                         ),
-                        
                         const Spacer(),
-                        
-                        // برچسب باز یا بسته بودن
                         if (merchant.openStatus.contains('بسته') || merchant.openStatus.contains('close'))
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

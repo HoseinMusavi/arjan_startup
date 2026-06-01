@@ -478,7 +478,7 @@ packages:
     source: hosted
     version: "2.1.8"
   provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: provider
       sha256: "4d9e15ebe6a4d0a93d8acf22380b5de29d14eb8f31991d404b96600ef1e6db49"
@@ -666,6 +666,70 @@ packages:
       url: "https://pub.tarazerp.ir"
     source: hosted
     version: "1.4.0"
+  url_launcher:
+    dependency: "direct main"
+    description:
+      name: url_launcher
+      sha256: b5bc871e750858c37ae2a5b15dca7dcbe635f7dbe4731a7d81f72c07f9c85f27
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "6.3.2"
+  url_launcher_android:
+    dependency: transitive
+    description:
+      name: url_launcher_android
+      sha256: "3bb000251e55d4a209aa0e2e563309dc9bb2befea2295fd0cec1f51760aac572"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "6.3.29"
+  url_launcher_ios:
+    dependency: transitive
+    description:
+      name: url_launcher_ios
+      sha256: "11638ba01ebf616e2404ac38bbfb50f5464122547a464b3321cd1e1d5adf463c"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "6.3.6"
+  url_launcher_linux:
+    dependency: transitive
+    description:
+      name: url_launcher_linux
+      sha256: "8e7065947317eb9c517be35fac9006f404312667fe2efafb82fa112db5a7e522"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "3.2.2"
+  url_launcher_macos:
+    dependency: transitive
+    description:
+      name: url_launcher_macos
+      sha256: "470a69b362e0ec8ab1536ac09b2b6fe2d3396b974e92e27dc77212a6bf11c315"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "3.2.5"
+  url_launcher_platform_interface:
+    dependency: transitive
+    description:
+      name: url_launcher_platform_interface
+      sha256: "1aea827384f054435297d53a034c184fd99db2230a1cea4893988e05a915a3ed"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "2.3.2"
+  url_launcher_web:
+    dependency: transitive
+    description:
+      name: url_launcher_web
+      sha256: "117bb39225b5400d360ddf72b5c456423bd9d32d259c2a9d3f4b14ac029a7f39"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "2.4.1"
+  url_launcher_windows:
+    dependency: transitive
+    description:
+      name: url_launcher_windows
+      sha256: d6537433e0e78b49e7ccc36d53bcb2ac183cd169e7c7033455efc4aedf500a4e
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "3.1.5"
   uuid:
     dependency: transitive
     description:
@@ -722,6 +786,38 @@ packages:
       url: "https://pub.tarazerp.ir"
     source: hosted
     version: "1.1.1"
+  webview_flutter:
+    dependency: "direct main"
+    description:
+      name: webview_flutter
+      sha256: "49e49bd050e61842b24a5a47ef72f7faf250b1d2b61c5e7a1102b1ae83f6d184"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "4.13.1"
+  webview_flutter_android:
+    dependency: transitive
+    description:
+      name: webview_flutter_android
+      sha256: "0f7fcd2c86bf36bdcf94881f7941ce0cbc4f8d104b9fdcd5fcbef90e2199db76"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "4.10.15"
+  webview_flutter_platform_interface:
+    dependency: transitive
+    description:
+      name: webview_flutter_platform_interface
+      sha256: "1221c1b12f5278791042f2ec2841743784cf25c5a644e23d6680e5d718824f04"
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "2.15.1"
+  webview_flutter_wkwebview:
+    dependency: transitive
+    description:
+      name: webview_flutter_wkwebview
+      sha256: d7219cfabc6f5fc2032e0fa980ec36d71f308a35a823395af1abc34d9a2ede83
+      url: "https://pub.tarazerp.ir"
+    source: hosted
+    version: "3.24.2"
   xdg_directories:
     dependency: transitive
     description:

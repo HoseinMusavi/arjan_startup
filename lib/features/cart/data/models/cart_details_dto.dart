@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 class CartDetailsDto {
   final String merchantName;
   final String merchantLogo;
@@ -18,14 +20,21 @@ class CartDetailsDto {
   });
 
   factory CartDetailsDto.fromJson(Map<String, dynamic> json) {
+    // ✅ اصلاح: دریافت صحیح merchant
     var merchant = json['merchant'] ?? {};
+    
+    // ✅ اصلاح: دریافت صحیح data و total
     var data = json['data'] ?? {};
-    var totalData = json['total'] ?? {};
+    var totalData = data['total'] ?? {};  // ← اینجا اصلاح شد
     
     List<CartItemDto> parsedItems = [];
     if (data['item'] != null && data['item'] is List) {
       parsedItems = (data['item'] as List).map((i) => CartItemDto.fromJson(i)).toList();
     }
+
+    debugPrint('💰 [CartDetailsDto] merchant: ${merchant['restaurant_name']}');
+    debugPrint('💰 [CartDetailsDto] totalData: $totalData');
+    debugPrint('💰 [CartDetailsDto] subtotal: ${totalData['subtotal']}, total: ${totalData['total']}');
 
     return CartDetailsDto(
       merchantName: merchant['restaurant_name']?.toString() ?? 'فروشگاه',

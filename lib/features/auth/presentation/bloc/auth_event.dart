@@ -6,7 +6,6 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-// رویداد درخواست کد (تایپ شماره موبایل)
 class SendOtpRequested extends AuthEvent {
   final String mobile;
   const SendOtpRequested(this.mobile);
@@ -14,11 +13,10 @@ class SendOtpRequested extends AuthEvent {
   List<Object> get props => [mobile];
 }
 
-// رویداد تایید کد (تایپ کد دریافتی)
 class VerifyOtpRequested extends AuthEvent {
   final String mobile;
   final String otp;
-  final String token; // توکن موقت (forgot_token)
+  final String token;
   
   const VerifyOtpRequested({
     required this.mobile,
@@ -27,6 +25,25 @@ class VerifyOtpRequested extends AuthEvent {
   });
   @override
   List<Object> get props => [mobile, otp, token];
+}
+
+// ✅ اضافه شده: رویداد ثبت‌نام
+class CreateAccountRequested extends AuthEvent {
+  final String firstName;
+  final String lastName;
+  final String mobile;
+  final double lat;
+  final double lng;
+  
+  const CreateAccountRequested({
+    required this.firstName,
+    required this.lastName,
+    required this.mobile,
+    required this.lat,
+    required this.lng,
+  });
+  @override
+  List<Object> get props => [firstName, lastName, mobile, lat, lng];
 }
 
 class AuthLogout extends AuthEvent {}

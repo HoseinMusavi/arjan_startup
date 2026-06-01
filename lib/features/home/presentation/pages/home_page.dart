@@ -2,8 +2,11 @@ import 'package:arjan_startup/features/cart/presentation/pages/cart_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:provider/provider.dart';
 
 import 'package:arjan_startup/core/di/service_locator.dart';
+import 'package:arjan_startup/core/enums/store_type.dart';
+import 'package:arjan_startup/core/providers/store_provider.dart';
 import 'package:arjan_startup/features/home/presentation/bloc/home_bloc.dart';
 import 'package:arjan_startup/features/home/data/models/cuisine_dto.dart';
 import 'package:arjan_startup/features/home/data/models/merchant_dto.dart';
@@ -15,14 +18,19 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFFFF7A00);
-    const Color bgColor = Color(0xFFF8F9FA); 
+    final storeType = context.watch<StoreProvider>().currentStore;
+    final primaryColor = storeType.primaryColor;
+    final cuisineId = storeType.cuisineId;
+    final bgColor = const Color(0xFFF8F9FA);
+    
+    final searchHint = storeType == StoreType.supermarket 
+        ? 'جستجو در سوپرمارکت...' 
+        : 'جستجو در ارجان فود...';
 
     return BlocProvider(
       create: (context) {
-        // ✅ ارسال جای خالی ('') باعث میشود که به صورت هوشمند سبد رستوران فعال پیدا شود
         getIt<CartBloc>().add(const LoadCartCount('', 30.5882768, 50.2575974));
-        return getIt<HomeBloc>()..add(HomeStarted());
+        return getIt<HomeBloc>()..add(HomeStarted(cuisineId: cuisineId));
       },
       child: Scaffold(
         backgroundColor: bgColor,
@@ -40,35 +48,44 @@ class HomePage extends StatelessWidget {
               color: primaryColor,
               backgroundColor: Colors.white,
               onRefresh: () async {
-                context.read<HomeBloc>().add(HomeRefreshed());
+                context.read<HomeBloc>().add(HomeRefreshed(cuisineId: cuisineId));
                 getIt<CartBloc>().add(const LoadCartCount('', 30.5882768, 50.2575974));
               },
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
-                  _buildAnimatedSliverHeader(primaryColor),
+                  _buildAnimatedSliverHeader(primaryColor, searchHint),
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
                   
-                  if (state.cuisines.isNotEmpty) 
+                  // ✅ برای سوپرمارکت، دسته‌بندی‌ها رو نمایش نده
+                  if (storeType != StoreType.supermarket && state.cuisines.isNotEmpty) 
                     _buildHorizontalCuisines(context, state.cuisines, primaryColor),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  if (storeType != StoreType.supermarket) 
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-                  if (state.banners.isNotEmpty) 
+                  // ✅ برای سوپرمارکت، بنرها رو نمایش نده (فعلاً)
+                  if (storeType != StoreType.supermarket && state.banners.isNotEmpty) 
                     _buildBanners(state.banners),
 
-                  if (state.specialOffers.isNotEmpty) ...[
-                    _buildSectionTitle('پیشنهادهای ویژه آرژان', true, primaryColor),
-                    _buildHorizontalMerchants(state.specialOffers),
+                  // ✅ برای سوپرمارکت، پیشنهادهای ویژه رو نمایش نده
+                  if (storeType != StoreType.supermarket && state.specialOffers.isNotEmpty) ...[
+                    _buildSectionTitle('پیشنهادهای ویژه', true, primaryColor),
+                    _buildHorizontalMerchants(state.specialOffers, storeType),
                   ],
 
-                  if (state.featuredMerchants.isNotEmpty) ...[
+                  // ✅ برای سوپرمارکت، فروشگاه‌های برگزیده رو نمایش نده
+                  if (storeType != StoreType.supermarket && state.featuredMerchants.isNotEmpty) ...[
                     _buildSectionTitle('فروشگاه‌های برگزیده', true, primaryColor),
-                    _buildHorizontalMerchants(state.featuredMerchants),
+                    _buildHorizontalMerchants(state.featuredMerchants, storeType),
                   ],
 
                   if (state.nearbyMerchants.isNotEmpty) ...[
-                    _buildSectionTitle('همه رستوران‌ها و فروشگاه‌ها', false, primaryColor),
-                    _buildVerticalMerchants(state.nearbyMerchants),
+                    _buildSectionTitle(
+                      storeType == StoreType.supermarket ? 'همه سوپرمارکت‌ها' : 'همه رستوران‌ها و فروشگاه‌ها', 
+                      false, 
+                      primaryColor
+                    ),
+                    _buildVerticalMerchants(state.nearbyMerchants, storeType),
                   ],
                   
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -81,7 +98,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildAnimatedSliverHeader(Color primaryColor) {
+  Widget _buildAnimatedSliverHeader(Color primaryColor, String searchHint) {
     return SliverAppBar(
       backgroundColor: primaryColor,
       floating: true,
@@ -96,7 +113,11 @@ class HomePage extends StatelessWidget {
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [primaryColor, const Color(0xFFFF9500)]),
+            gradient: LinearGradient(
+              begin: Alignment.topRight, 
+              end: Alignment.bottomLeft, 
+              colors: [primaryColor, primaryColor.withValues(alpha: 0.8)],
+            ),
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
           ),
           child: SafeArea(
@@ -174,7 +195,7 @@ class HomePage extends StatelessWidget {
                 const SizedBox(width: 16),
                 Icon(Icons.search_rounded, color: primaryColor, size: 24),
                 const SizedBox(width: 10),
-                Text('جستجو در ارجان فود...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(searchHint, style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -197,9 +218,7 @@ class HomePage extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () {
-                 
-                  },
+                  onTap: () {},
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -247,21 +266,90 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildHorizontalMerchants(List<MerchantDto> merchants) {
+  Widget _buildHorizontalMerchants(List<MerchantDto> merchants, StoreType storeType) {
     return SliverToBoxAdapter(
-      child: SizedBox(height: 270, child: ListView.builder(scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(), padding: const EdgeInsets.symmetric(horizontal: 12), itemCount: merchants.length, itemBuilder: (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4), child: MerchantCard(merchant: merchants[index], isHorizontal: true)))),
+      child: SizedBox(
+        height: 270, 
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal, 
+          physics: const BouncingScrollPhysics(), 
+          padding: const EdgeInsets.symmetric(horizontal: 12), 
+          itemCount: merchants.length, 
+          itemBuilder: (context, index) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4), 
+            child: MerchantCard(
+              merchant: merchants[index], 
+              isHorizontal: true,
+              storeType: storeType,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildVerticalMerchants(List<MerchantDto> merchants) {
-    return SliverList(delegate: SliverChildBuilderDelegate((context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: MerchantCard(merchant: merchants[index], isHorizontal: false)), childCount: merchants.length));
+  Widget _buildVerticalMerchants(List<MerchantDto> merchants, StoreType storeType) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0), 
+          child: MerchantCard(
+            merchant: merchants[index], 
+            isHorizontal: false,
+            storeType: storeType,
+          ),
+        ), 
+        childCount: merchants.length,
+      ),
+    );
   }
 
   Widget _buildShimmerLoading(Color primaryColor) {
-    return Shimmer.fromColors(baseColor: Colors.grey.shade200, highlightColor: Colors.grey.shade50, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(height: 130, color: Colors.white), const SizedBox(height: 24), Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(4, (index) => const CircleAvatar(radius: 35, backgroundColor: Colors.white))), const SizedBox(height: 32), Container(margin: const EdgeInsets.symmetric(horizontal: 16), height: 20, width: 150, color: Colors.white), const SizedBox(height: 16), SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: List.generate(3, (index) => Container(margin: const EdgeInsets.only(right: 16), height: 200, width: 250, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16))))))]));
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade200, 
+      highlightColor: Colors.grey.shade50, 
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, 
+        children: [
+          Container(height: 130, color: Colors.white), 
+          const SizedBox(height: 24), 
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+            children: List.generate(4, (index) => const CircleAvatar(radius: 35, backgroundColor: Colors.white)),
+          ), 
+          const SizedBox(height: 32), 
+          Container(margin: const EdgeInsets.symmetric(horizontal: 16), height: 20, width: 150, color: Colors.white), 
+          const SizedBox(height: 16), 
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal, 
+            child: Row(
+              children: List.generate(3, (index) => Container(margin: const EdgeInsets.only(right: 16), height: 200, width: 250, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)))),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildErrorState(BuildContext context, String error, Color color) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.wifi_off_rounded, size: 70, color: Colors.grey.shade300), const SizedBox(height: 16), Text(error, style: TextStyle(color: Colors.grey.shade600, fontSize: 15)), const SizedBox(height: 24), ElevatedButton(onPressed: () => context.read<HomeBloc>().add(HomeRefreshed()), style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12)), child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))]));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center, 
+        children: [
+          Icon(Icons.wifi_off_rounded, size: 70, color: Colors.grey.shade300), 
+          const SizedBox(height: 16), 
+          Text(error, style: TextStyle(color: Colors.grey.shade600, fontSize: 15)), 
+          const SizedBox(height: 24), 
+          ElevatedButton(
+            onPressed: () {
+              final storeType = context.read<StoreProvider>().currentStore;
+              context.read<HomeBloc>().add(HomeRefreshed(cuisineId: storeType.cuisineId));
+            }, 
+            style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12)), 
+            child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 }

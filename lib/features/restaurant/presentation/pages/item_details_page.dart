@@ -1,3 +1,4 @@
+import 'package:arjan_startup/core/enums/store_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';  // ⚠️ نیاز به اضافه کردن پکیج
 import 'package:arjan_startup/core/di/service_locator.dart';
@@ -19,7 +20,7 @@ class ItemDetailsPage extends StatefulWidget {
     required this.itemId,
     required this.categoryId,
     required this.merchantName,
-    required this.itemName,
+    required this.itemName, required StoreType storeType,
   });
 
   @override
