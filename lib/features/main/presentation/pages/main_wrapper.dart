@@ -31,7 +31,7 @@ class MainWrapper extends StatelessWidget {
       case 1:
         return StoreType.supermarket;
       case 2:
-        return StoreType.locations;
+        return null; // ✅ سفارشات - بدون تغییر استور
       case 3:
         return StoreType.profile;
       default:
@@ -48,7 +48,6 @@ class MainWrapper extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: Consumer<StoreProvider>(
         builder: (context, storeProvider, _) {
-          // ✅ دریافت رنگ بر اساس تب فعال
           final activeColor = _getColorForIndex(currentIndex, storeProvider);
           
           return Container(
@@ -114,7 +113,6 @@ class MainWrapper extends StatelessWidget {
     );
   }
 
-  // ✅ تابع برای تعیین رنگ بر اساس تب فعال
   Color _getColorForIndex(int index, StoreProvider storeProvider) {
     switch (index) {
       case 0:
@@ -122,7 +120,7 @@ class MainWrapper extends StatelessWidget {
       case 1:
         return StoreType.supermarket.primaryColor;
       case 2:
-        return StoreType.locations.primaryColor;
+        return const Color(0xFFFF7A00); // ✅ رنگ نارنجی برای تب سفارشات
       case 3:
         return StoreType.profile.primaryColor;
       default:

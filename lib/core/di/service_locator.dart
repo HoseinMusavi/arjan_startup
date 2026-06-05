@@ -1,4 +1,4 @@
-import 'package:arjan_startup/features/cart/data/repositories/cart_repository_impl.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,45 +35,74 @@ import '../../features/restaurant/presentation/bloc/restaurant_bloc.dart';
 
 // Cart Feature
 import '../../features/cart/data/datasources/cart_remote_source.dart';
+import '../../features/cart/data/repositories/cart_repository_impl.dart';
 import '../../features/cart/domain/repositories/cart_repository.dart';
 import '../../features/cart/presentation/bloc/cart_bloc.dart';
+
+// ✅ Order Feature (جدید)
+import '../../features/orders/data/datasources/order_remote_source.dart';
+import '../../features/orders/data/repositories/order_repository_impl.dart';
+import '../../features/orders/domain/repositories/order_repository.dart';
+import '../../features/orders/presentation/bloc/order_bloc.dart';
 
 final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
+  debugPrint('🔧 [DI] راه‌اندازی سرویس‌لوکیتور...');
+  
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton(() => sharedPreferences);
+  debugPrint('✅ [DI] SharedPreferences ثبت شد');
 
   getIt.registerLazySingleton<DioClient>(() => DioClient());
+  debugPrint('✅ [DI] DioClient ثبت شد');
 
-  // Splash
+  // ==================== Splash Feature ====================
   getIt.registerLazySingleton<ConfigRepository>(() => ConfigRepositoryImpl(getIt<DioClient>()));
   getIt.registerFactory<SplashBloc>(() => SplashBloc(getIt<ConfigRepository>()));
+  debugPrint('✅ [DI] Splash Feature ثبت شد');
 
-  // Auth
+  // ==================== Auth Feature ====================
   getIt.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSourceImpl(getIt<DioClient>()));
-  getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(getIt<AuthRemoteDataSource>(), getIt<SharedPreferences>()));
+  getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(
+    getIt<AuthRemoteDataSource>(), 
+    getIt<SharedPreferences>()
+  ));
   getIt.registerFactory<AuthBloc>(() => AuthBloc(getIt<AuthRepository>()));
+  debugPrint('✅ [DI] Auth Feature ثبت شد');
 
-  // Home
+  // ==================== Home Feature ====================
   getIt.registerLazySingleton<HomeRemoteDataSource>(() => HomeRemoteDataSourceImpl(getIt<DioClient>()));
   getIt.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(getIt<HomeRemoteDataSource>()));
   getIt.registerFactory<HomeBloc>(() => HomeBloc(getIt<HomeRepository>()));
+  debugPrint('✅ [DI] Home Feature ثبت شد');
 
-  // Profile
-  getIt.registerLazySingleton<ProfileRemoteDataSource>(() => ProfileRemoteDataSourceImpl(getIt<DioClient>(), getIt<SharedPreferences>()));
+  // ==================== Profile Feature ====================
+  getIt.registerLazySingleton<ProfileRemoteDataSource>(() => ProfileRemoteDataSourceImpl(
+    getIt<DioClient>(), 
+    getIt<SharedPreferences>()
+  ));
   getIt.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(getIt<ProfileRemoteDataSource>()));
   getIt.registerFactory<ProfileBloc>(() => ProfileBloc(getIt<ProfileRepository>()));
+  debugPrint('✅ [DI] Profile Feature ثبت شد');
 
-  // Restaurant
+  // ==================== Restaurant Feature ====================
   getIt.registerLazySingleton<RestaurantRemoteDataSource>(() => RestaurantRemoteDataSourceImpl(getIt<DioClient>()));
   getIt.registerLazySingleton<RestaurantRepository>(() => RestaurantRepositoryImpl(getIt<RestaurantRemoteDataSource>()));
   getIt.registerFactory<RestaurantBloc>(() => RestaurantBloc(getIt<RestaurantRepository>()));
+  debugPrint('✅ [DI] Restaurant Feature ثبت شد');
 
-  // Cart Feature
+  // ==================== Cart Feature ====================
   getIt.registerLazySingleton<CartRemoteDataSource>(() => CartRemoteDataSourceImpl(getIt<DioClient>()));
   getIt.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(getIt<CartRemoteDataSource>()));
-  
-  // 🚨🚨 تغییر بسیار مهم: ثبت سبد خرید به عنوان Singleton 🚨🚨
   getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>()));
+  debugPrint('✅ [DI] Cart Feature ثبت شد');
+
+  // ==================== Order Feature (جدید) ====================
+  getIt.registerLazySingleton<OrderRemoteDataSource>(() => OrderRemoteDataSourceImpl(getIt<DioClient>()));
+  getIt.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(getIt<OrderRemoteDataSource>()));
+  getIt.registerFactory<OrderBloc>(() => OrderBloc(getIt<OrderRepository>()));
+  debugPrint('✅ [DI] Order Feature ثبت شد');
+
+  debugPrint('🔧 [DI] سرویس‌لوکیتور با موفقیت راه‌اندازی شد');
 }

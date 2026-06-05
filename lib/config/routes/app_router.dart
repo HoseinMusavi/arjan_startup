@@ -11,6 +11,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/main/presentation/pages/main_wrapper.dart';
 import '../../features/profile/presentation/bloc/pages/profile_page.dart';
+import '../../features/orders/presentation/pages/orders_page.dart'; // ✅ اضافه شد
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -90,21 +91,19 @@ class AppRouter {
               GoRoute(
                 path: '/supermarket',
                 name: 'supermarket',
-                builder: (context, state) => const HomePage(), // ✅ استفاده مجدد از HomePage
+                builder: (context, state) => const HomePage(),
               ),
             ],
           ),
 
-          // تب ۲: سفارشات (فعلاً placeholder)
+          // تب ۲: سفارشات ✅ اصلاح شده
           StatefulShellBranch(
             navigatorKey: _shellNavigatorOrdersKey,
             routes: [
               GoRoute(
                 path: '/orders',
                 name: 'orders',
-                builder: (context, state) => const Scaffold(
-                  body: Center(child: Text('صفحه سفارشات به زودی...')),
-                ),
+                builder: (context, state) => const OrdersPage(), // ✅ جایگزین placeholder
               ),
             ],
           ),
