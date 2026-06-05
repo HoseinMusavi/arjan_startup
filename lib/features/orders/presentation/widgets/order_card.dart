@@ -1,3 +1,5 @@
+import 'package:arjan_startup/features/orders/presentation/pages/order_detail_page.dart';
+import 'package:arjan_startup/features/orders/presentation/pages/order_tracking_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:arjan_startup/features/orders/domain/entities/order_entity.dart';
@@ -17,6 +19,8 @@ class OrderCard extends StatelessWidget {
     required this.onReorder,
     this.onTrack,
   });
+
+  
 
   String getOrderId() {
     if (order != null) return order!.orderId;
@@ -65,6 +69,9 @@ class OrderCard extends StatelessWidget {
       default:
         return Colors.grey;
     }
+
+
+    
   }
 
   @override
@@ -76,6 +83,34 @@ class OrderCard extends StatelessWidget {
     final total = getTotal();
     final status = getStatus();
     final date = getDate();
+
+
+    
+void onOrderTap(String orderId, String merchantName) {
+  debugPrint('📋 [OrdersPage] کلیک روی سفارش: $orderId');
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => OrderDetailPage(
+        orderId: orderId,
+        merchantName: merchantName,
+      ),
+    ),
+  );
+}
+
+void _onTrack(String orderId) {
+  debugPrint('📋 [OrdersPage] پیگیری سفارش: $orderId');
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => OrderTrackingPage(orderId: orderId),
+    ),
+  );
+}
+
+
+
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -106,25 +141,18 @@ class OrderCard extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: logo.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: logo,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                              errorWidget: (context, url, error) => Container(
-                                width: 50,
-                                height: 50,
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.storefront, color: Colors.grey, size: 28),
-                              ),
-                            )
-                          : Container(
-                              width: 50,
-                              height: 50,
-                              color: Colors.grey.shade200,
-                              child: const Icon(Icons.storefront, color: Colors.grey, size: 28),
-                            ),
+                      child: CachedNetworkImage(
+                        imageUrl: logo,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.storefront, color: Colors.grey, size: 28),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -132,7 +160,7 @@ class OrderCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            merchantName.isNotEmpty ? merchantName : 'نامشخص',
+                            merchantName,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
@@ -251,4 +279,7 @@ class OrderCard extends StatelessWidget {
       ),
     );
   }
+
+
+  
 }

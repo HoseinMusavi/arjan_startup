@@ -39,7 +39,7 @@ import '../../features/cart/data/repositories/cart_repository_impl.dart';
 import '../../features/cart/domain/repositories/cart_repository.dart';
 import '../../features/cart/presentation/bloc/cart_bloc.dart';
 
-// ✅ Order Feature (جدید)
+// Order Feature
 import '../../features/orders/data/datasources/order_remote_source.dart';
 import '../../features/orders/data/repositories/order_repository_impl.dart';
 import '../../features/orders/domain/repositories/order_repository.dart';
@@ -98,7 +98,7 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>()));
   debugPrint('✅ [DI] Cart Feature ثبت شد');
 
-  // ==================== Order Feature (جدید) ====================
+  // ==================== Order Feature ====================
   getIt.registerLazySingleton<OrderRemoteDataSource>(() => OrderRemoteDataSourceImpl(getIt<DioClient>()));
   getIt.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(getIt<OrderRemoteDataSource>()));
   getIt.registerFactory<OrderBloc>(() => OrderBloc(getIt<OrderRepository>()));

@@ -32,7 +32,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     result.fold(
       (failure) {
         debugPrint('❌ [OrderBloc] خطا: ${failure.message}');
-        emit(state.copyWith(status: OrderStatus.failure, errorMessage: failure.message));
+        emit(state.copyWith(status: OrderStatus.failure, errorMessage: failure.message, orders: []));
       },
       (response) {
         if (response.code == 1 && response.details != null) {
@@ -60,7 +60,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
           }
         } else {
           debugPrint('⚠️ [OrderBloc] پاسخ با خطا: ${response.message}');
-          emit(state.copyWith(status: OrderStatus.empty, orders: []));
+          emit(state.copyWith(status: OrderStatus.empty, orders: [], errorMessage: response.message));
         }
       },
     );
@@ -69,6 +69,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
   // ==================== تغییر تب ====================
   Future<void> _onChangeTab(ChangeOrderTabEvent event, Emitter<OrderState> emit) async {
     debugPrint('📋 [OrderBloc] تغییر تب به: ${event.tab}');
+    // قبل از بارگذاری جدید، استیت را ریست کن
+    emit(state.copyWith(orders: [], status: OrderStatus.loading));
     add(LoadOrdersEvent(tab: event.tab, lat: event.lat, lng: event.lng));
   }
 
@@ -165,7 +167,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
   Future<void> _onSearchOrder(SearchOrderEvent event, Emitter<OrderState> emit) async {
     if (event.searchStr.trim().isEmpty) {
       debugPrint('📋 [OrderBloc] عبارت جستجو خالی است');
-      emit(state.copyWith(searchResults: [], isSearching: false));
+      emit(state.copyWith(searchResults: [], isSearching: false, status: OrderStatus.success));
       return;
     }
 
