@@ -95,10 +95,22 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
   @override
   Future<void> clearCart(String merchantId) async {
     try {
-      final data = {'merchant_id': merchantId, ..._baseParams};
-      await _dioClient.post('/clearCart', data: data); 
+      final queryParams = {
+        'merchant_id': merchantId,
+        'transaction_type': 'delivery',
+        ..._baseParams,
+        'current_page': 'cart',
+      };
+      debugPrint('🗑️ [API] ارسال درخواست clearCart با GET برای merchant_id: $merchantId');
+      final response = await _dioClient.get('/clearCart', queryParameters: queryParams);
+      debugPrint('🗑️ [API] پاسخ clearCart: ${response.data}');
+      
+      if (response.data['code'] != 1) {
+        throw Exception(response.data['msg'] ?? 'خطا در خالی کردن سبد');
+      }
     } catch (e) {
-      log('❌ خطا در پاک کردن سبد خرید: $e');
+      debugPrint('❌ [API] خطا در پاک کردن سبد خرید: $e');
+      rethrow;
     }
   }
 
@@ -154,6 +166,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
   }
 
   @override
+    @override
   Future<CartDetailsDto> getFirstCart(double lat, double lng) async {
     try {
       final queryParams = {
@@ -168,7 +181,23 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       debugPrint('🛒 [API] پاسخ getFirstCart: ${response.data}');
       
       if (response.data['code'] == 1 && response.data['details'] != null) {
-        return CartDetailsDto.fromJson(response.data['details']);
+        final details = response.data['details'];
+        final merchantId = details['merchant_id']?.toString() ?? '';
+        final count = details['count'] ?? 0;
+        
+        debugPrint('🛒 [API] getFirstCart: merchant_id=$merchantId, count=$count');
+        
+        // ✅ getFirstCart فقط merchant_id و count برمیگردونه
+        // merchantName رو برابر merchant_id قرار میدیم تا CartBloc بتونه تشخیص بده
+        return CartDetailsDto(
+          merchantName: merchantId.isNotEmpty ? merchantId : '',
+          merchantLogo: '',
+          items: [],
+          subtotal: 0,
+          deliveryCharges: 0,
+          total: 0,
+          availablePoints: 0,
+        );
       } else {
         return CartDetailsDto(
           merchantName: '',

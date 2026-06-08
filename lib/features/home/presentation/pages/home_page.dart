@@ -29,7 +29,8 @@ class HomePage extends StatelessWidget {
 
     return BlocProvider(
       create: (context) {
-        getIt<CartBloc>().add(const LoadCartCount('', 30.5882768, 50.2575974));
+        // ✅ تغییر: LoadFirstCart به جای LoadCartCount با merchantId خالی
+        getIt<CartBloc>().add(const LoadFirstCart(30.5882768, 50.2575974));
         return getIt<HomeBloc>()..add(HomeStarted(cuisineId: cuisineId));
       },
       child: Scaffold(
@@ -49,7 +50,8 @@ class HomePage extends StatelessWidget {
               backgroundColor: Colors.white,
               onRefresh: () async {
                 context.read<HomeBloc>().add(HomeRefreshed(cuisineId: cuisineId));
-                getIt<CartBloc>().add(const LoadCartCount('', 30.5882768, 50.2575974));
+                // ✅ تغییر: LoadFirstCart به جای LoadCartCount با merchantId خالی
+                getIt<CartBloc>().add(const LoadFirstCart(30.5882768, 50.2575974));
               },
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),

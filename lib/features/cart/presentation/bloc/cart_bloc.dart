@@ -17,7 +17,7 @@ export 'cart_state.dart';
 
 class CartBloc extends Bloc<CartEvent, CartState> {
   final CartRepository _repository;
-  String _activeMerchantId = ''; 
+  String _activeMerchantId = '';
 
   CartBloc(this._repository) : super(const CartState()) {
     on<LoadCartCount>(_onLoadCartCount);
@@ -29,49 +29,56 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<LoadFirstCart>(_onLoadFirstCart);
   }
 
+  /// ===================== LoadFirstCart =====================
   Future<void> _onLoadFirstCart(LoadFirstCart event, Emitter<CartState> emit) async {
-    print('🛒 [CART_BLOC] دریافت اولین سبد خرید');
+    debugPrint('🛒 [CART_BLOC] ========== LoadFirstCart شروع ==========');
     emit(state.copyWith(status: CartStatus.loading));
-    
+
     final result = await _repository.getFirstCart(event.lat, event.lng);
-    
+
     result.fold(
       (failure) {
-        print('❌ [CART_BLOC] خطا در دریافت اولین سبد خرید: ${failure.message}');
-        emit(state.copyWith(status: CartStatus.success));
+        debugPrint('❌ [CART_BLOC] خطا در دریافت اولین سبد خرید: ${failure.message}');
+        _activeMerchantId = '';
+        emit(state.copyWith(status: CartStatus.success, cartCount: 0, basketTotal: '0 تومان', cartDetails: null));
       },
       (data) {
-        if (data.items.isNotEmpty) {
-          print('✅ [CART_BLOC] اولین سبد خرید دریافت شد: ${data.items.length} آیتم');
+        debugPrint('✅ [CART_BLOC] پاسخ getFirstCart: merchantName=${data.merchantName}, items=${data.items.length}');
+
+        if (data.merchantName.isNotEmpty && data.merchantName != 'فروشگاه') {
+          debugPrint('✅ [CART_BLOC] سبد خرید پیدا شد برای merchant_id: ${data.merchantName}');
           _activeMerchantId = data.merchantName;
-          emit(state.copyWith(
-            status: CartStatus.success, 
-            cartDetails: data,
-            cartCount: data.items.length,
-            basketTotal: '${data.total.toStringAsFixed(0)} تومان',
-          ));
+          add(LoadCartCount(data.merchantName, event.lat, event.lng));
+          add(LoadCartDetails(event.lat, event.lng));
         } else {
-          print('📭 [CART_BLOC] اولین سبد خرید خالی است');
-          emit(state.copyWith(status: CartStatus.success));
+          debugPrint('📭 [CART_BLOC] سبد خرید خالی است');
+          _activeMerchantId = '';
+          emit(state.copyWith(
+            status: CartStatus.success,
+            cartCount: 0,
+            basketTotal: '0 تومان',
+            cartDetails: null,
+          ));
         }
       },
     );
+    debugPrint('🛒 [CART_BLOC] ========== LoadFirstCart پایان ==========');
   }
 
+  /// ===================== LoadCartCount =====================
   Future<void> _onLoadCartCount(LoadCartCount event, Emitter<CartState> emit) async {
     String targetMerchant = event.merchantId.isNotEmpty ? event.merchantId : _activeMerchantId;
-    
-    // اگر merchantId خالی است و _activeMerchantId هم خالی، فقط ریست کن
+
     if (targetMerchant.isEmpty) {
       _activeMerchantId = '';
       emit(state.copyWith(status: CartStatus.success, cartCount: 0, basketTotal: '0 تومان', cartDetails: null));
       return;
     }
 
-    print('🛒 [CART_BLOC] دریافت تعداد سبد خرید برای فروشگاه: $targetMerchant');
-    
+    debugPrint('🛒 [CART_BLOC] دریافت تعداد سبد خرید برای فروشگاه: $targetMerchant');
+
     final result = await _repository.getCartCount(targetMerchant, event.lat, event.lng);
-    
+
     result.fold(
       (failure) => emit(state.copyWith(status: CartStatus.success, cartCount: 0, basketTotal: '0 تومان')),
       (data) {
@@ -80,158 +87,171 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         } else if (targetMerchant == _activeMerchantId && data.count == 0) {
           _activeMerchantId = '';
         }
-        
-        print('✅ [CART_BLOC] تعداد سبد خرید: ${data.count}, مجموع: ${data.basketTotal}');
+
+        debugPrint('✅ [CART_BLOC] تعداد سبد خرید: ${data.count}, مجموع: ${data.basketTotal}');
         emit(state.copyWith(status: CartStatus.success, cartCount: data.count, basketTotal: data.basketTotal));
       },
     );
   }
 
+  /// ===================== AddItemToCart =====================
   Future<bool> _isMerchantActive(String merchantId, double lat, double lng) async {
     try {
       final restaurantRepo = getIt<RestaurantRepository>();
       final result = await restaurantRepo.getRestaurantInfo(merchantId, lat, lng);
-      
+
       return result.fold(
         (failure) => false,
         (info) {
           final isOpen = info.status == 'باز است' || info.status == 'open' || info.status == 'Open';
-          print('🔍 [CART_BLOC] فروشگاه ${info.name}: status=${info.status}, isOpen=$isOpen');
+          debugPrint('🔍 [CART_BLOC] فروشگاه ${info.name}: status=${info.status}, isOpen=$isOpen');
           return isOpen;
         },
       );
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در بررسی وضعیت فروشگاه: $e');
+      debugPrint('❌ [CART_BLOC] خطا در بررسی وضعیت فروشگاه: $e');
       return false;
     }
   }
 
   Future<void> _onAddItemToCart(AddItemToCart event, Emitter<CartState> emit) async {
-    print('🛒 [CART_BLOC] _onAddItemToCart شروع شد');
-    print('   📦 merchantId: ${event.merchantId}');
-    print('   🍔 itemId: ${event.item.id}, name: ${event.item.name}');
-    print('   📍 lat: ${event.lat}, lng: ${event.lng}');
-    
+    debugPrint('🛒 [CART_BLOC] _onAddItemToCart شروع شد');
+    debugPrint('   📦 merchantId: ${event.merchantId}');
+    debugPrint('   🍔 itemId: ${event.item.id}, name: ${event.item.name}');
+    debugPrint('   📍 lat: ${event.lat}, lng: ${event.lng}');
+
     final isActive = await _isMerchantActive(event.merchantId, event.lat, event.lng);
-    print('🔍 [CART_BLOC] نتیجه بررسی فروشگاه: isActive=$isActive');
-    
+    debugPrint('🔍 [CART_BLOC] نتیجه بررسی فروشگاه: isActive=$isActive');
+
     if (!isActive) {
-      print('❌ [CART_BLOC] فروشگاه غیرفعال است، ارسال خطا');
+      debugPrint('❌ [CART_BLOC] فروشگاه غیرفعال است، ارسال خطا');
       emit(state.copyWith(
-        status: CartStatus.failure, 
-        errorMessage: 'این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.'
+        status: CartStatus.failure,
+        errorMessage: 'این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.',
       ));
       return;
     }
 
     if (_activeMerchantId.isNotEmpty && _activeMerchantId != event.merchantId) {
-      print('⚠️ [CART_BLOC] تداخل فروشگاه: فعال=${_activeMerchantId}, جدید=${event.merchantId}');
+      debugPrint('⚠️ [CART_BLOC] تداخل فروشگاه: فعال=${_activeMerchantId}, جدید=${event.merchantId}');
       emit(state.copyWith(
-        status: CartStatus.conflict, 
-        pendingItem: event.item, 
-        pendingMerchantId: event.merchantId, 
-        pendingCategoryId: event.categoryId
+        status: CartStatus.conflict,
+        pendingItem: event.item,
+        pendingMerchantId: event.merchantId,
+        pendingCategoryId: event.categoryId,
       ));
       return;
     }
 
     emit(state.copyWith(status: CartStatus.updating));
-    print('🔄 [CART_BLOC] در حال افزودن به سبد...');
-    
+    debugPrint('🔄 [CART_BLOC] در حال افزودن به سبد...');
+
     final payload = _buildPayload(event.merchantId, event.item, event.categoryId, event.lat, event.lng);
-    print('📦 [CART_BLOC] payload ساخته شد: $payload');
-    
+    debugPrint('📦 [CART_BLOC] payload ساخته شد: $payload');
+
     final addResult = await _repository.addToCart(payload);
     await addResult.fold(
       (failure) async {
-        print('❌ [CART_BLOC] خطا در افزودن: ${failure.message}');
+        debugPrint('❌ [CART_BLOC] خطا در افزودن: ${failure.message}');
         emit(state.copyWith(status: CartStatus.failure, errorMessage: failure.message));
       },
       (data) async {
-        print('✅ [CART_BLOC] افزودن موفق بود، cartCount: ${data.cartCount}');
-        _activeMerchantId = event.merchantId; 
+        debugPrint('✅ [CART_BLOC] افزودن موفق بود، cartCount: ${data.cartCount}');
+        _activeMerchantId = event.merchantId;
         add(LoadCartCount(event.merchantId, event.lat, event.lng));
-      }
+        add(LoadCartDetails(event.lat, event.lng));
+      },
     );
   }
 
+  /// ===================== ClearCartAndAddItem =====================
   Future<void> _onClearCartAndAddItem(ClearCartAndAddItem event, Emitter<CartState> emit) async {
-    print('🔄 [CART_BLOC] پاک کردن سبد و افزودن آیتم جدید');
-    
+    debugPrint('🔄 [CART_BLOC] پاک کردن سبد و افزودن آیتم جدید');
+
     final isActive = await _isMerchantActive(event.merchantId, event.lat, event.lng);
-    
+
     if (!isActive) {
-      print('❌ [CART_BLOC] فروشگاه غیرفعال است، ارسال خطا');
+      debugPrint('❌ [CART_BLOC] فروشگاه غیرفعال است، ارسال خطا');
       emit(state.copyWith(
-        status: CartStatus.failure, 
-        errorMessage: 'این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.'
+        status: CartStatus.failure,
+        errorMessage: 'این فروشگاه در حال حاضر غیرفعال است و امکان ثبت سفارش وجود ندارد.',
       ));
       return;
     }
 
     emit(state.copyWith(status: CartStatus.updating));
-    await _repository.clearCart(_activeMerchantId); 
-    
+    await _repository.clearCart(_activeMerchantId);
+
     final payload = _buildPayload(event.merchantId, event.item, event.categoryId, event.lat, event.lng);
     final addResult = await _repository.addToCart(payload);
-    
+
     await addResult.fold(
       (failure) async => emit(state.copyWith(status: CartStatus.failure, errorMessage: failure.message)),
       (data) async {
-        print('✅ [CART_BLOC] سبد پاک و آیتم جدید اضافه شد');
+        debugPrint('✅ [CART_BLOC] سبد پاک و آیتم جدید اضافه شد');
         _activeMerchantId = event.merchantId;
         add(LoadCartCount(event.merchantId, event.lat, event.lng));
-      }
+        add(LoadCartDetails(event.lat, event.lng));
+      },
     );
   }
 
+  /// ===================== LoadCartDetails =====================
   Future<void> _onLoadCartDetails(LoadCartDetails event, Emitter<CartState> emit) async {
     if (_activeMerchantId.isEmpty) {
-      print('⚠️ [CART_BLOC] هیچ فروشگاه فعالی برای دریافت جزئیات وجود ندارد');
+      debugPrint('⚠️ [CART_BLOC] هیچ فروشگاه فعالی برای دریافت جزئیات وجود ندارد');
       emit(state.copyWith(status: CartStatus.success, cartDetails: null));
       return;
     }
-    
-    print('🛒 [CART_BLOC] دریافت جزئیات سبد خرید برای فروشگاه: $_activeMerchantId');
+
+    debugPrint('🛒 [CART_BLOC] دریافت جزئیات سبد خرید برای فروشگاه: $_activeMerchantId');
     final result = await _repository.getCartDetails(_activeMerchantId, event.lat, event.lng);
-    
+
     result.fold(
       (failure) {
-        print('❌ [CART_BLOC] خطا در دریافت جزئیات: ${failure.message}');
+        debugPrint('❌ [CART_BLOC] خطا در دریافت جزئیات: ${failure.message}');
       },
       (data) {
         if (data.items.isNotEmpty) {
-          print('✅ [CART_BLOC] جزئیات سبد خرید دریافت شد: ${data.items.length} آیتم');
-          emit(state.copyWith(status: CartStatus.success, cartDetails: data));
+          debugPrint('✅ [CART_BLOC] جزئیات سبد خرید دریافت شد: ${data.items.length} آیتم, مجموع: ${data.total}');
+          emit(state.copyWith(
+            status: CartStatus.success,
+            cartDetails: data,
+            cartCount: data.items.length,
+            basketTotal: '${data.total.toStringAsFixed(0)} تومان',
+          ));
         } else {
-          print('📭 [CART_BLOC] سبد خرید خالی است');
+          debugPrint('📭 [CART_BLOC] سبد خرید خالی است');
           emit(state.copyWith(status: CartStatus.success, cartDetails: null));
         }
       },
     );
   }
 
+  /// ===================== RemoveItemFromCart =====================
   Future<void> _onRemoveItemFromCart(RemoveItemFromCart event, Emitter<CartState> emit) async {
-    print('🛒 [CART_BLOC] حذف آیتم ${event.itemId} از سبد خرید');
+    debugPrint('🛒 [CART_BLOC] حذف آیتم ${event.itemId} از سبد خرید');
     emit(state.copyWith(status: CartStatus.updating));
     add(LoadCartCount(_activeMerchantId, event.lat, event.lng));
     add(LoadCartDetails(event.lat, event.lng));
   }
 
+  /// ===================== UpdateItemQuantity =====================
   Future<void> _onUpdateItemQuantity(UpdateItemQuantity event, Emitter<CartState> emit) async {
-    print('🛒 [CART_BLOC] آپدیت تعداد آیتم ${event.itemId} به ${event.quantity}');
+    debugPrint('🛒 [CART_BLOC] آپدیت تعداد آیتم ${event.itemId} به ${event.quantity}');
     emit(state.copyWith(status: CartStatus.updating));
     add(LoadCartCount(_activeMerchantId, event.lat, event.lng));
     add(LoadCartDetails(event.lat, event.lng));
   }
 
+  /// ===================== BuildPayload =====================
   Map<String, dynamic> _buildPayload(String merchantId, MenuItemDto item, String categoryId, double lat, double lng) {
     String priceForServer = item.rawPrice;
     if (priceForServer.isEmpty) {
       String cleanPrice = item.price.replaceAll(RegExp(r'[^0-9]'), '');
-      priceForServer = '0|$cleanPrice'; 
+      priceForServer = '0|$cleanPrice';
     }
-    
+
     return {
       'merchant_id': merchantId,
       'item_id': item.id,
@@ -243,26 +263,29 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     };
   }
 
-  /// دریافت شناسه فروشگاه فعال
+  /// ===================== Public Methods =====================
   String getActiveMerchantId() => _activeMerchantId;
 
-  /// خالی کردن کامل سبد خرید فروشگاه فعال
   Future<Either<Failure, void>> clearCart(String merchantId, double lat, double lng) async {
-    print('🗑️ [CART_BLOC] درخواست خالی کردن سبد خرید برای فروشگاه: $merchantId');
+    debugPrint('🗑️ [CART_BLOC] درخواست خالی کردن سبد خرید برای فروشگاه: $merchantId');
     try {
       final result = await _repository.clearCart(merchantId);
-      print('✅ [CART_BLOC] سبد خرید با موفقیت خالی شد');
-      
-      // ریست کردن merchantId فعال
+      debugPrint('✅ [CART_BLOC] سبد خرید با موفقیت خالی شد');
+
+      // ✅ ریست کامل state
       _activeMerchantId = '';
-      
-      // بروزرسانی وضعیت
-      add(LoadCartCount('', lat, lng));
-      add(LoadCartDetails(lat, lng));
-      
+
+      // ✅ emit مستقیم به جای add event
+      emit(state.copyWith(
+        status: CartStatus.success,
+        cartCount: 0,
+        basketTotal: '0 تومان',
+        cartDetails: null,
+      ));
+
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در خالی کردن سبد: $e');
+      debugPrint('❌ [CART_BLOC] خطا در خالی کردن سبد: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -270,13 +293,13 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   // ==================== متدهای جدید برای صفحه آدرس و پرداخت ====================
 
   Future<Either<Failure, List<AddressDto>>> getAddressBookDropDown() async {
-    print('📦 [CART_BLOC] دریافت لیست آدرس‌های کاربر');
+    debugPrint('📦 [CART_BLOC] دریافت لیست آدرس‌های کاربر');
     try {
       final result = await _repository.getAddressBookDropDown();
-      print('✅ [CART_BLOC] تعداد آدرس‌های دریافت شده: ${result.fold((l) => 0, (r) => r.length)}');
+      debugPrint('✅ [CART_BLOC] تعداد آدرس‌های دریافت شده: ${result.fold((l) => 0, (r) => r.length)}');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در دریافت آدرس‌ها: $e');
+      debugPrint('❌ [CART_BLOC] خطا در دریافت آدرس‌ها: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -293,7 +316,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     required String contactPhone,
     required String merchantId,
   }) async {
-    print('📦 [CART_BLOC] ثبت آدرس جدید: $locationName - $street');
+    debugPrint('📦 [CART_BLOC] ثبت آدرس جدید: $locationName - $street');
     try {
       final result = await _repository.setDeliveryAddress(
         lat: lat,
@@ -307,46 +330,46 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         contactPhone: contactPhone,
         merchantId: merchantId,
       );
-      print('✅ [CART_BLOC] آدرس با موفقیت ثبت شد');
+      debugPrint('✅ [CART_BLOC] آدرس با موفقیت ثبت شد');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در ثبت آدرس: $e');
+      debugPrint('❌ [CART_BLOC] خطا در ثبت آدرس: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
 
   Future<Either<Failure, Map<String, String>>> getDeliveryDateList(String merchantId) async {
-    print('📦 [CART_BLOC] دریافت تاریخ‌های تحویل برای فروشگاه: $merchantId');
+    debugPrint('📦 [CART_BLOC] دریافت تاریخ‌های تحویل برای فروشگاه: $merchantId');
     try {
       final result = await _repository.getDeliveryDateList(merchantId);
-      print('✅ [CART_BLOC] تعداد تاریخ‌های دریافت شده: ${result.fold((l) => 0, (r) => r.length)}');
+      debugPrint('✅ [CART_BLOC] تعداد تاریخ‌های دریافت شده: ${result.fold((l) => 0, (r) => r.length)}');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در دریافت تاریخ‌ها: $e');
+      debugPrint('❌ [CART_BLOC] خطا در دریافت تاریخ‌ها: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
 
   Future<Either<Failure, Map<String, String>>> getDeliveryTimeList(String merchantId, String deliveryDate) async {
-    print('📦 [CART_BLOC] دریافت ساعات تحویل برای تاریخ: $deliveryDate');
+    debugPrint('📦 [CART_BLOC] دریافت ساعات تحویل برای تاریخ: $deliveryDate');
     try {
       final result = await _repository.getDeliveryTimeList(merchantId, deliveryDate);
-      print('✅ [CART_BLOC] تعداد ساعات دریافت شده: ${result.fold((l) => 0, (r) => r.length)}');
+      debugPrint('✅ [CART_BLOC] تعداد ساعات دریافت شده: ${result.fold((l) => 0, (r) => r.length)}');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در دریافت ساعات: $e');
+      debugPrint('❌ [CART_BLOC] خطا در دریافت ساعات: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
 
   Future<Either<Failure, RedeemPointsResponseDto>> applyRedeemPoints(int points, String merchantId) async {
-    print('📦 [CART_BLOC] اعمال امتیاز: $points امتیاز');
+    debugPrint('📦 [CART_BLOC] اعمال امتیاز: $points امتیاز');
     try {
       final result = await _repository.applyRedeemPoints(points, merchantId);
-      print('✅ [CART_BLOC] نتیجه اعمال امتیاز: ${result.fold((l) => "خطا", (r) => r.success ? "موفق" : r.message)}');
+      debugPrint('✅ [CART_BLOC] نتیجه اعمال امتیاز: ${result.fold((l) => "خطا", (r) => r.success ? "موفق" : r.message)}');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در اعمال امتیاز: $e');
+      debugPrint('❌ [CART_BLOC] خطا در اعمال امتیاز: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -357,7 +380,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     required String deliveryTime,
     required String merchantId,
   }) async {
-    print('📦 [CART_BLOC] پیش‌تایید سفارش: تاریخ=$deliveryDate, ساعت=$deliveryTime');
+    debugPrint('📦 [CART_BLOC] پیش‌تایید سفارش: تاریخ=$deliveryDate, ساعت=$deliveryTime');
     try {
       final result = await _repository.preCheckout(
         transactionType: transactionType,
@@ -365,29 +388,25 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         deliveryTime: deliveryTime,
         merchantId: merchantId,
       );
-      print('✅ [CART_BLOC] پیش‌تایید با موفقیت انجام شد');
+      debugPrint('✅ [CART_BLOC] پیش‌تایید با موفقیت انجام شد');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در پیش‌تایید: $e');
+      debugPrint('❌ [CART_BLOC] خطا در پیش‌تایید: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
 
-
-// ==================== متد جدید برای دریافت روش‌های پرداخت ====================
-
-Future<Either<Failure, List<PaymentMethodDto>>> getPaymentList(String merchantId, double lat, double lng) async {
-  debugPrint('💳 [CART_BLOC] دریافت لیست روش‌های پرداخت');
-  try {
-    final result = await _repository.getPaymentList(merchantId, lat, lng);
-    debugPrint('✅ [CART_BLOC] تعداد روش‌های پرداخت: ${result.fold((l) => 0, (r) => r.length)}');
-    return result;
-  } catch (e) {
-    debugPrint('❌ [CART_BLOC] خطا در دریافت روش‌های پرداخت: $e');
-    return Left(ServerFailure(e.toString()));
+  Future<Either<Failure, List<PaymentMethodDto>>> getPaymentList(String merchantId, double lat, double lng) async {
+    debugPrint('💳 [CART_BLOC] دریافت لیست روش‌های پرداخت');
+    try {
+      final result = await _repository.getPaymentList(merchantId, lat, lng);
+      debugPrint('✅ [CART_BLOC] تعداد روش‌های پرداخت: ${result.fold((l) => 0, (r) => r.length)}');
+      return result;
+    } catch (e) {
+      debugPrint('❌ [CART_BLOC] خطا در دریافت روش‌های پرداخت: $e');
+      return Left(ServerFailure(e.toString()));
+    }
   }
-}
-
 
   Future<Either<Failure, PayNowResponseDto>> payNow({
     required String transactionType,
@@ -396,7 +415,7 @@ Future<Either<Failure, List<PaymentMethodDto>>> getPaymentList(String merchantId
     required String deliveryTime,
     required String merchantId,
   }) async {
-    print('📦 [CART_BLOC] ثبت سفارش نهایی: provider=$paymentProvider');
+    debugPrint('📦 [CART_BLOC] ثبت سفارش نهایی: provider=$paymentProvider');
     try {
       final result = await _repository.payNow(
         transactionType: transactionType,
@@ -405,10 +424,10 @@ Future<Either<Failure, List<PaymentMethodDto>>> getPaymentList(String merchantId
         deliveryTime: deliveryTime,
         merchantId: merchantId,
       );
-      print('✅ [CART_BLOC] سفارش ثبت شد: orderId=${result.fold((l) => "", (r) => r.orderId)}');
+      debugPrint('✅ [CART_BLOC] سفارش ثبت شد: orderId=${result.fold((l) => "", (r) => r.orderId)}');
       return result;
     } catch (e) {
-      print('❌ [CART_BLOC] خطا در ثبت سفارش: $e');
+      debugPrint('❌ [CART_BLOC] خطا در ثبت سفارش: $e');
       return Left(ServerFailure(e.toString()));
     }
   }

@@ -22,7 +22,22 @@ class _CartPageState extends State<CartPage> {
   void initState() {
     super.initState();
     debugPrint('🛒 [CART_PAGE] صفحه سبد خرید باز شد');
-    _cartBloc.add(const LoadCartDetails(30.5882768, 50.2575974));
+    
+    // ✅ چک کن اگه cartDetails توی state هست، دوباره load نکن
+    if (_cartBloc.state.cartDetails != null && _cartBloc.state.cartDetails!.items.isNotEmpty) {
+      debugPrint('🛒 [CART_PAGE] جزئیات سبد از قبل موجود است، load مجدد انجام نمیشود');
+      return;
+    }
+    
+    // ✅ اگه merchantId فعال هست، جزئیات رو بگیر
+    final activeMerchantId = _cartBloc.getActiveMerchantId();
+    if (activeMerchantId.isNotEmpty) {
+      debugPrint('🛒 [CART_PAGE] دریافت جزئیات برای merchantId: $activeMerchantId');
+      _cartBloc.add(LoadCartDetails(30.5882768, 50.2575974));
+    } else {
+      debugPrint('🛒 [CART_PAGE] merchantId فعال وجود ندارد، تلاش با LoadFirstCart');
+      _cartBloc.add(const LoadFirstCart(30.5882768, 50.2575974));
+    }
   }
 
   Future<void> _clearCart() async {
@@ -90,12 +105,10 @@ class _CartPageState extends State<CartPage> {
   void _goToCheckout() {
     final activeMerchantId = _cartBloc.getActiveMerchantId();
     
-    // ✅ اصلاح: دریافت total از state.cartDetails یا state.basketTotal
     double total = 0;
     if (_cartBloc.state.cartDetails != null) {
       total = _cartBloc.state.cartDetails!.total;
     } else if (_cartBloc.state.basketTotal.isNotEmpty) {
-      // تبدیل String به double
       final cleanTotal = _cartBloc.state.basketTotal.replaceAll(RegExp(r'[^0-9]'), '');
       total = double.tryParse(cleanTotal) ?? 0;
     }

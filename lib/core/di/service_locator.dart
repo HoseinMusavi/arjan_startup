@@ -95,7 +95,7 @@ Future<void> setupServiceLocator() async {
   // ==================== Cart Feature ====================
   getIt.registerLazySingleton<CartRemoteDataSource>(() => CartRemoteDataSourceImpl(getIt<DioClient>()));
   getIt.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(getIt<CartRemoteDataSource>()));
-  getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>()));
+  getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>())); // ✅ LazySingleton - یک instance برای کل اپ
   debugPrint('✅ [DI] Cart Feature ثبت شد');
 
   // ==================== Order Feature ====================
