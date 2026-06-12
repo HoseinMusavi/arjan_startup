@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Core
 import '../network/dio_client.dart';
+import '../services/session_service.dart';
 
 // Splash Feature
 import '../../features/splash/data/repositories/config_repository.dart';
@@ -49,10 +50,14 @@ final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
   debugPrint('🔧 [DI] راه‌اندازی سرویس‌لوکیتور...');
-  
+
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton(() => sharedPreferences);
   debugPrint('✅ [DI] SharedPreferences ثبت شد');
+
+  // Session Service
+  getIt.registerLazySingleton<SessionService>(() => SessionService(getIt<SharedPreferences>()));
+  debugPrint('✅ [DI] SessionService ثبت شد');
 
   getIt.registerLazySingleton<DioClient>(() => DioClient());
   debugPrint('✅ [DI] DioClient ثبت شد');
@@ -63,44 +68,62 @@ Future<void> setupServiceLocator() async {
   debugPrint('✅ [DI] Splash Feature ثبت شد');
 
   // ==================== Auth Feature ====================
-  getIt.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSourceImpl(getIt<DioClient>()));
-  getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(
-    getIt<AuthRemoteDataSource>(), 
-    getIt<SharedPreferences>()
-  ));
+  getIt.registerLazySingleton<AuthRemoteDataSource>(
+    () => AuthRemoteDataSourceImpl(getIt<DioClient>()),
+  );
+  getIt.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(getIt<AuthRemoteDataSource>(), getIt<SharedPreferences>()),
+  );
   getIt.registerFactory<AuthBloc>(() => AuthBloc(getIt<AuthRepository>()));
   debugPrint('✅ [DI] Auth Feature ثبت شد');
 
   // ==================== Home Feature ====================
-  getIt.registerLazySingleton<HomeRemoteDataSource>(() => HomeRemoteDataSourceImpl(getIt<DioClient>()));
-  getIt.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(getIt<HomeRemoteDataSource>()));
+  getIt.registerLazySingleton<HomeRemoteDataSource>(
+    () => HomeRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
+  );
+  getIt.registerLazySingleton<HomeRepository>(
+    () => HomeRepositoryImpl(getIt<HomeRemoteDataSource>()),
+  );
   getIt.registerFactory<HomeBloc>(() => HomeBloc(getIt<HomeRepository>()));
   debugPrint('✅ [DI] Home Feature ثبت شد');
 
   // ==================== Profile Feature ====================
-  getIt.registerLazySingleton<ProfileRemoteDataSource>(() => ProfileRemoteDataSourceImpl(
-    getIt<DioClient>(), 
-    getIt<SharedPreferences>()
-  ));
-  getIt.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(getIt<ProfileRemoteDataSource>()));
+  getIt.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(getIt<DioClient>(), getIt<SharedPreferences>()),
+  );
+  getIt.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(getIt<ProfileRemoteDataSource>()),
+  );
   getIt.registerFactory<ProfileBloc>(() => ProfileBloc(getIt<ProfileRepository>()));
   debugPrint('✅ [DI] Profile Feature ثبت شد');
 
   // ==================== Restaurant Feature ====================
-  getIt.registerLazySingleton<RestaurantRemoteDataSource>(() => RestaurantRemoteDataSourceImpl(getIt<DioClient>()));
-  getIt.registerLazySingleton<RestaurantRepository>(() => RestaurantRepositoryImpl(getIt<RestaurantRemoteDataSource>()));
+  getIt.registerLazySingleton<RestaurantRemoteDataSource>(
+    () => RestaurantRemoteDataSourceImpl(getIt<DioClient>()),
+  );
+  getIt.registerLazySingleton<RestaurantRepository>(
+    () => RestaurantRepositoryImpl(getIt<RestaurantRemoteDataSource>()),
+  );
   getIt.registerFactory<RestaurantBloc>(() => RestaurantBloc(getIt<RestaurantRepository>()));
   debugPrint('✅ [DI] Restaurant Feature ثبت شد');
 
   // ==================== Cart Feature ====================
-  getIt.registerLazySingleton<CartRemoteDataSource>(() => CartRemoteDataSourceImpl(getIt<DioClient>()));
-  getIt.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(getIt<CartRemoteDataSource>()));
-  getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>())); // ✅ LazySingleton - یک instance برای کل اپ
+  getIt.registerLazySingleton<CartRemoteDataSource>(
+    () => CartRemoteDataSourceImpl(getIt<DioClient>()),
+  );
+  getIt.registerLazySingleton<CartRepository>(
+    () => CartRepositoryImpl(getIt<CartRemoteDataSource>()),
+  );
+  getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>()));
   debugPrint('✅ [DI] Cart Feature ثبت شد');
 
   // ==================== Order Feature ====================
-  getIt.registerLazySingleton<OrderRemoteDataSource>(() => OrderRemoteDataSourceImpl(getIt<DioClient>()));
-  getIt.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(getIt<OrderRemoteDataSource>()));
+  getIt.registerLazySingleton<OrderRemoteDataSource>(
+    () => OrderRemoteDataSourceImpl(getIt<DioClient>()),
+  );
+  getIt.registerLazySingleton<OrderRepository>(
+    () => OrderRepositoryImpl(getIt<OrderRemoteDataSource>()),
+  );
   getIt.registerFactory<OrderBloc>(() => OrderBloc(getIt<OrderRepository>()));
   debugPrint('✅ [DI] Order Feature ثبت شد');
 
