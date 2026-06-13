@@ -1,9 +1,13 @@
-import 'dart:async';
+
 import 'package:arjan_startup/core/error/failures.dart';
+
+
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:dartz/dartz.dart';
+
 import '../../data/models/cuisine_dto.dart';
 import '../../data/models/merchant_dto.dart';
 import '../../data/models/search_item_dto.dart';
@@ -77,6 +81,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     (results[4] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => featured = r);
     (results[5] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => all = r);
     (results[6] as Either<Failure, List<MerchantDto>>).fold((l) {}, (r) => favorites = r);
+
+    // مرتب‌سازی: فروشگاه‌های باز اول، بسته آخر
+    nearby.sort((a, b) => (b.isOpen ? 1 : 0).compareTo(a.isOpen ? 1 : 0));
+    offers.sort((a, b) => (b.isOpen ? 1 : 0).compareTo(a.isOpen ? 1 : 0));
+    featured.sort((a, b) => (b.isOpen ? 1 : 0).compareTo(a.isOpen ? 1 : 0));
+    all.sort((a, b) => (b.isOpen ? 1 : 0).compareTo(a.isOpen ? 1 : 0));
+    favorites.sort((a, b) => (b.isOpen ? 1 : 0).compareTo(a.isOpen ? 1 : 0));
 
     if (cuisineId == null || cuisineId.isEmpty) {
       nearby = nearby.where((m) => !m.cuisineText.contains('سوپرمارکت')).toList();

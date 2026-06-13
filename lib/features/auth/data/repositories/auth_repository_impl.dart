@@ -1,8 +1,10 @@
 import 'package:dartz/dartz.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/services/session_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_source.dart';
@@ -10,8 +12,11 @@ import '../datasources/auth_remote_source.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final SharedPreferences _prefs;
+  late final SessionService _sessionService;
 
-  AuthRepositoryImpl(this._remoteDataSource, this._prefs);
+  AuthRepositoryImpl(this._remoteDataSource, this._prefs) {
+    _sessionService = GetIt.instance<SessionService>();
+  }
 
   @override
   Future<Either<Failure, String>> requestOtp(String mobile) async {
@@ -41,8 +46,11 @@ class AuthRepositoryImpl implements AuthRepository {
       debugPrint("📝 [REPO] دریافت اطلاعات کاربر: token=${user.token.substring(0, user.token.length > 10 ? 10 : user.token.length)}..., name=${user.firstName}");
       
       if (user.token.isNotEmpty && user.token != 'null') {
+        // ذخیره در SharedPreferences (کلید قدیمی)
         await _prefs.setString('client_token', user.token);
-        debugPrint("✅ [REPO] توکن در SharedPreferences ذخیره شد");
+        // ذخیره در SessionService
+        await _sessionService.setUserToken(user.token);
+        debugPrint("✅ [REPO] توکن در SharedPreferences و SessionService ذخیره شد");
       } else {
         debugPrint("⚠️ [REPO] توکن خالی یا نامعتبر است!");
       }
@@ -57,7 +65,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  // ✅ اضافه شده: ثبت‌نام کاربر جدید
   @override
   Future<Either<Failure, UserEntity>> createAccount({
     required String firstName,
@@ -80,7 +87,8 @@ class AuthRepositoryImpl implements AuthRepository {
       
       if (user.token.isNotEmpty && user.token != 'null') {
         await _prefs.setString('client_token', user.token);
-        debugPrint("✅ [REPO] توکن در SharedPreferences ذخیره شد");
+        await _sessionService.setUserToken(user.token);
+        debugPrint("✅ [REPO] توکن در SharedPreferences و SessionService ذخیره شد");
       }
       
       return Right(user);
@@ -97,6 +105,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> logout() async {
     try {
       await _prefs.remove('client_token');
+      await _prefs.remove('user_token');
       debugPrint("✅ [REPO] خروج از حساب - توکن حذف شد");
       return const Right(null);
     } catch (e) {

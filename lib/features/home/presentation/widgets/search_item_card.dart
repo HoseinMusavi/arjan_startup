@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/models/search_item_dto.dart';
-import '../../../restaurant/presentation/pages/merchant_menu_page.dart';
+import '../../../restaurant/presentation/pages/item_details_page.dart';
 import '../../../../core/enums/store_type.dart';
 
 class SearchItemCard extends StatelessWidget {
@@ -39,10 +39,13 @@ class SearchItemCard extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MerchantMenuPage(
+                builder: (context) => ItemDetailsPage(
                   merchantId: item.merchantId,
-                  merchantName: item.title,
+                  itemId: item.id,
                   storeType: storeType,
+                  categoryId: item.category,
+                  merchantName: item.title,
+                  itemName: item.title,
                 ),
               ),
             );
@@ -50,7 +53,6 @@ class SearchItemCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // لوگو
               ClipRRect(
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
@@ -71,7 +73,6 @@ class SearchItemCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // اطلاعات
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -100,21 +101,8 @@ class SearchItemCard extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.storefront_outlined, size: 14, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              'فروشگاه: ${item.merchantId}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
+                      // حذف نمایش "فروشگاه: شماره" برای جلوگیری از نمایش عدد
+                      // در آینده در صورت وجود نام فروشگاه در API اضافه شود
                       if (item.deliveryFee.isNotEmpty && item.deliveryFee != '0')
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
