@@ -1,6 +1,6 @@
 import 'package:arjan_startup/core/enums/store_type.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';  // ⚠️ نیاز به اضافه کردن پکیج
+import 'package:flutter_html/flutter_html.dart';
 import 'package:arjan_startup/core/di/service_locator.dart';
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:arjan_startup/features/restaurant/presentation/bloc/restaurant_bloc.dart';
@@ -13,6 +13,7 @@ class ItemDetailsPage extends StatefulWidget {
   final String categoryId;
   final String merchantName;
   final String itemName;
+  final StoreType storeType;
 
   const ItemDetailsPage({
     super.key,
@@ -20,7 +21,8 @@ class ItemDetailsPage extends StatefulWidget {
     required this.itemId,
     required this.categoryId,
     required this.merchantName,
-    required this.itemName, required StoreType storeType,
+    required this.itemName,
+    required this.storeType,
   });
 
   @override
@@ -38,7 +40,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   @override
   void initState() {
     super.initState();
-    print('🍽️ [ITEM_DETAILS] بارگذاری جزئیات غذا: ${widget.itemName}');
+    debugPrint('🍽️ [ITEM_DETAILS] بارگذاری جزئیات غذا: ${widget.itemName}');
     _loadItemDetails();
   }
 
@@ -69,13 +71,13 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
       return;
     }
 
-    print('🛒 [ITEM_DETAILS] افزودن به سبد: ${widget.itemName} x$_selectedQuantity');
+    debugPrint('🛒 [ITEM_DETAILS] افزودن به سبد: ${widget.itemName} x$_selectedQuantity');
     
     final tempItem = MenuItemDto(
       id: widget.itemId,
       name: widget.itemName,
       description: '',
-      photo: '',
+      photo: _selectedPrice!.price,
       price: _selectedPrice!.formattedPrice,
       rawPrice: _selectedPrice!.price,
     );
@@ -101,9 +103,30 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
     Navigator.pop(context);
   }
 
+  // متد کمکی برای پاک کردن "تومان" تکراری و اضافه کردن آن فقط یکبار
+  String _formatPrice(String rawPrice) {
+    // ابتدا هر چیزی غیر از عدد و علامت کاما را حذف می‌کنیم تا عدد خالص بدست آید
+    String numericPart = rawPrice.replaceAll(RegExp(r'[^0-9]'), '');
+    if (numericPart.isEmpty) return rawPrice;
+    // تبدیل به عدد با جدا کننده هزارگان
+    final number = int.tryParse(numericPart) ?? 0;
+    final formattedNumber = number.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '$formattedNumber تومان';
+  }
+
+  String _cleanPrice(String price) {
+    // اگر قیمت شامل "تومان" است، فقط یک بار آن را نگه دار
+    String cleaned = price.replaceAll(RegExp(r'تومان\s*تومان'), 'تومان').trim();
+    // اگر "تومان" وجود ندارد اضافه کن
+    if (!cleaned.contains('تومان')) {
+      cleaned = _formatPrice(cleaned);
+    }
+    return cleaned;
+  }
+
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFFFF7A00);
+    final Color primaryColor = widget.storeType.primaryColor;
     const Color bgColor = Color(0xFFF8F9FA);
 
     return Scaffold(
@@ -128,7 +151,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
           final state = snapshot.data;
           
           if (state == null || state.itemDetailsStatus == ItemDetailsStatus.loading) {
-            return const Center(child: CircularProgressIndicator(color: primaryColor));
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (state.itemDetailsStatus == ItemDetailsStatus.failure) {
@@ -139,7 +162,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                   Icon(Icons.error_outline, size: 60, color: Colors.grey.shade400),
                   const SizedBox(height: 16),
                   Text(
-                    state.errorMessage,
+                    state.errorMessage.isNotEmpty ? state.errorMessage : 'خطا در دریافت اطلاعات',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 24),
@@ -163,8 +186,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
             _selectedPrice = _prices.first;
           }
 
-          final numericPrice = int.tryParse(_selectedPrice?.price.replaceAll(RegExp(r'[^0-9]'), '') ?? '0') ?? 0;
-          final totalPrice = numericPrice * _selectedQuantity;
+          final totalPrice = (int.tryParse(_selectedPrice?.price ?? '0') ?? 0) * _selectedQuantity;
 
           return Column(
             children: [
@@ -195,7 +217,6 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                                     child: Icon(Icons.fastfood, size: 80, color: Colors.grey.shade400),
                                   ),
                           ),
-                          // گرادیانت روی تصویر
                           Positioned.fill(
                             child: Container(
                               decoration: BoxDecoration(
@@ -240,7 +261,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
-                                      _selectedPrice!.formattedPrice,
+                                      _cleanPrice(_selectedPrice!.formattedPrice),
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -252,7 +273,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                             ),
                             const SizedBox(height: 16),
 
-                            // توضیحات (با پشتیبانی از HTML)
+                            // توضیحات (HTML)
                             if (item.data.itemDescription.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.all(12),

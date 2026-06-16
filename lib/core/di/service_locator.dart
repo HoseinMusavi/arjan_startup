@@ -98,8 +98,9 @@ Future<void> setupServiceLocator() async {
   debugPrint('✅ [DI] Profile Feature ثبت شد');
 
   // ==================== Restaurant Feature ====================
+  // ✅ اضافه کردن SessionService به عنوان پارامتر دوم
   getIt.registerLazySingleton<RestaurantRemoteDataSource>(
-    () => RestaurantRemoteDataSourceImpl(getIt<DioClient>()),
+    () => RestaurantRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
   );
   getIt.registerLazySingleton<RestaurantRepository>(
     () => RestaurantRepositoryImpl(getIt<RestaurantRemoteDataSource>()),

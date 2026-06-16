@@ -1,19 +1,22 @@
-import 'dart:developer';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'package:equatable/equatable.dart';
+import 'package:dartz/dartz.dart';
+import 'package:arjan_startup/core/error/failures.dart';
 import 'package:arjan_startup/features/restaurant/domain/repositories/restaurant_repository.dart';
 import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
 import 'package:arjan_startup/features/restaurant/data/models/menu_category_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/item_details_dto.dart';
+import 'package:arjan_startup/features/restaurant/data/models/search_category_item_dto.dart';
 
-import 'restaurant_event.dart';
-import 'restaurant_state.dart';
-
-export 'restaurant_event.dart';
-export 'restaurant_state.dart';
+part 'restaurant_event.dart';
+part 'restaurant_state.dart';
 
 class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
   final RestaurantRepository _repository;
-  
+
   String _currentMerchantId = '';
   double _currentLat = 0.0;
   double _currentLng = 0.0;
@@ -21,11 +24,13 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
   RestaurantBloc(this._repository) : super(const RestaurantState()) {
     on<RestaurantStarted>(_onStarted);
     on<CategoryChanged>(_onCategoryChanged);
-    on<LoadItemDetails>(_onLoadItemDetails);  // ✅ اضافه شده
+    on<LoadItemDetails>(_onLoadItemDetails);
+    on<SearchMenu>(_onSearchMenu);
+    on<ClearSearch>(_onClearSearch);
   }
 
   Future<void> _onStarted(RestaurantStarted event, Emitter<RestaurantState> emit) async {
-    log('🚀 [RestaurantBloc] استارت برای فروشگاه: ${event.merchantId}');
+    debugPrint('🚀 [RestaurantBloc] استارت برای فروشگاه: ${event.merchantId}');
     _currentMerchantId = event.merchantId;
     _currentLat = event.lat;
     _currentLng = event.lng;
@@ -45,7 +50,7 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     );
 
     categoriesResult.fold(
-      (failure) => log('⚠️ [RestaurantBloc] خطا در لود دسته‌بندی‌ها'), 
+      (failure) => debugPrint('⚠️ [RestaurantBloc] خطا در لود دسته‌بندی‌ها'),
       (data) {
         categories = data;
         if (categories.isNotEmpty) {
@@ -62,7 +67,7 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
         selectedCategoryId: initialCatId,
         menuStatus: MenuLoadingStatus.loading,
       ));
-      
+
       if (initialCatId.isNotEmpty) {
         add(CategoryChanged(initialCatId));
       } else {
@@ -72,38 +77,77 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
   }
 
   Future<void> _onCategoryChanged(CategoryChanged event, Emitter<RestaurantState> emit) async {
-    emit(state.copyWith(selectedCategoryId: event.categoryId, menuStatus: MenuLoadingStatus.loading));
-    
+    debugPrint('🔄 [RestaurantBloc] تغییر دسته‌بندی به: ${event.categoryId}');
+    // ریست کردن وضعیت جستجو و نمایش آیتم‌های دسته‌بندی جدید
+    emit(state.copyWith(
+      selectedCategoryId: event.categoryId,
+      menuStatus: MenuLoadingStatus.loading,
+      searchMenuStatus: SearchMenuStatus.idle,
+      searchResults: const [],
+      searchQuery: '',
+    ));
+    debugPrint('🔄 [RestaurantBloc] وضعیت جستجو ریست شد، در حال دریافت آیتم‌ها...');
+
     final itemsResult = await _repository.getItemsByCategory(_currentMerchantId, event.categoryId, _currentLat, _currentLng);
-    
+
     itemsResult.fold(
       (failure) => emit(state.copyWith(menuStatus: MenuLoadingStatus.failure, errorMessage: failure.message)),
-      (data) => emit(state.copyWith(menuStatus: MenuLoadingStatus.success, items: data)),
+      (data) {
+        debugPrint('✅ [RestaurantBloc] ${data.length} آیتم برای دسته‌بندی ${event.categoryId} دریافت شد');
+        emit(state.copyWith(menuStatus: MenuLoadingStatus.success, items: data));
+      },
     );
   }
 
-  // ✅ اضافه شده: دریافت جزئیات یک غذا
   Future<void> _onLoadItemDetails(LoadItemDetails event, Emitter<RestaurantState> emit) async {
-    log('🍽️ [RestaurantBloc] دریافت جزئیات غذا: ${event.itemId}');
+    debugPrint('🍽️ [RestaurantBloc] دریافت جزئیات غذا: ${event.itemId}');
     emit(state.copyWith(itemDetailsStatus: ItemDetailsStatus.loading));
-    
     final result = await _repository.getItemDetails(
-      event.merchantId, 
-      event.itemId, 
-      event.categoryId, 
-      event.lat, 
+      event.merchantId,
+      event.itemId,
+      event.categoryId,
+      event.lat,
       event.lng,
     );
-    
     result.fold(
-      (failure) => emit(state.copyWith(
-        itemDetailsStatus: ItemDetailsStatus.failure, 
-        errorMessage: failure.message,
-      )),
-      (data) => emit(state.copyWith(
-        itemDetailsStatus: ItemDetailsStatus.success, 
-        selectedItem: data,
-      )),
+      (failure) => emit(state.copyWith(itemDetailsStatus: ItemDetailsStatus.failure, errorMessage: failure.message)),
+      (data) => emit(state.copyWith(itemDetailsStatus: ItemDetailsStatus.success, selectedItem: data)),
     );
+  }
+
+  Future<void> _onSearchMenu(SearchMenu event, Emitter<RestaurantState> emit) async {
+    if (event.query.trim().isEmpty) {
+      emit(state.copyWith(searchMenuStatus: SearchMenuStatus.idle, searchResults: const [], searchQuery: ''));
+      return;
+    }
+    debugPrint('🔍 [RestaurantBloc] جستجو: "${event.query}" در فروشگاه $_currentMerchantId');
+    emit(state.copyWith(searchMenuStatus: SearchMenuStatus.loading, searchQuery: event.query));
+    final result = await _repository.searchFoodCategory(
+      query: event.query,
+      merchantId: _currentMerchantId,
+      lat: _currentLat,
+      lng: _currentLng,
+    );
+    result.fold(
+      (failure) => emit(state.copyWith(searchMenuStatus: SearchMenuStatus.failure, errorMessage: failure.message)),
+      (response) {
+        debugPrint('📦 [RestaurantBloc] تعداد دسته‌بندی‌های یافت شده: ${response.items.length}');
+        if (response.isSuccess && response.items.isNotEmpty) {
+          emit(state.copyWith(searchMenuStatus: SearchMenuStatus.success, searchResults: response.items));
+        } else {
+          emit(state.copyWith(searchMenuStatus: SearchMenuStatus.empty, searchResults: const []));
+        }
+      },
+    );
+  }
+
+  void _onClearSearch(ClearSearch event, Emitter<RestaurantState> emit) {
+    debugPrint('🧹 [RestaurantBloc] پاک کردن جستجو');
+    emit(state.copyWith(searchMenuStatus: SearchMenuStatus.idle, searchResults: const [], searchQuery: ''));
+  }
+
+  @override
+  Future<void> close() {
+    return super.close();
   }
 }

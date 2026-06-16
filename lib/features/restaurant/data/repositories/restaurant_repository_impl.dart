@@ -6,7 +6,9 @@ import '../datasources/restaurant_remote_source.dart';
 import '../models/restaurant_info_dto.dart';
 import '../models/menu_category_dto.dart';
 import '../models/menu_item_dto.dart';
-import '../models/item_details_dto.dart';  // ✅ اضافه شده
+import '../models/item_details_dto.dart';
+import '../models/search_category_item_dto.dart';
+import '../models/merchant_about_dto.dart';
 
 class RestaurantRepositoryImpl implements RestaurantRepository {
   final RestaurantRemoteDataSource _dataSource;
@@ -50,7 +52,6 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
     }
   }
 
-  // ✅ اضافه شده
   @override
   Future<Either<Failure, ItemDetailsDto>> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng) async {
     log('🔄 [Repo] درخواست جزئیات غذا به دیتاسورس ارسال شد.');
@@ -61,6 +62,48 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
     } catch (e) {
       log('❌ [Repo] خطا: $e');
       return Left(ServerFailure("خطای ارتباط با سرور در دریافت جزئیات غذا"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, SearchCategoryResponseDto>> searchFoodCategory({
+    required String query,
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.searchFoodCategory(
+        query: query,
+        merchantId: merchantId,
+        lat: lat,
+        lng: lng,
+      );
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure('خطا در جستجوی منو: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, MerchantAboutDto>> getMerchantAbout({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.getMerchantAbout(
+        merchantId: merchantId,
+        lat: lat,
+        lng: lng,
+      );
+      if (result.isSuccess) {
+        return Right(result);
+      } else {
+        return Left(ServerFailure(result.msg));
+      }
+    } catch (e) {
+      return Left(ServerFailure('خطا در دریافت اطلاعات رستوران: ${e.toString()}'));
     }
   }
 }

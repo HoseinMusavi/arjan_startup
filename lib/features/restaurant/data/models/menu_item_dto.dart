@@ -50,7 +50,7 @@ class MenuItemDto {
       description: cleanDescription,
       photo: json['photo']?.toString() ?? '',
       price: finalPrice,
-      rawPrice: priceForServer, // ✅ ذخیره قیمت خام با فرمت مورد تایید بک‌اند
+      rawPrice: priceForServer,
     );
   }
 }

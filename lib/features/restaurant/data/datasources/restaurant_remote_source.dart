@@ -1,21 +1,36 @@
 import 'dart:developer';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/services/session_service.dart';
 import '../models/restaurant_info_dto.dart';
 import '../models/menu_category_dto.dart';
 import '../models/menu_item_dto.dart';
-import '../models/item_details_dto.dart';  // ✅ اضافه شده - این فایل رو بعداً می‌سازیم
+import '../models/item_details_dto.dart';
+import '../models/search_category_item_dto.dart';
+import '../models/merchant_about_dto.dart';
 
 abstract class RestaurantRemoteDataSource {
   Future<RestaurantInfoDto?> getRestaurantInfo(String merchantId, double lat, double lng);
   Future<List<MenuCategoryDto>> getMenuCategories(String merchantId, double lat, double lng);
   Future<List<MenuItemDto>> getItemsByCategory(String merchantId, String categoryId, double lat, double lng);
-  Future<ItemDetailsDto?> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng);  // ✅ اضافه شده
+  Future<ItemDetailsDto?> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng);
+  Future<SearchCategoryResponseDto> searchFoodCategory({
+    required String query,
+    required String merchantId,
+    required double lat,
+    required double lng,
+  });
+  Future<MerchantAboutDto> getMerchantAbout({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  });
 }
 
 class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
   final DioClient _dioClient;
+  final SessionService _sessionService;
 
-  RestaurantRemoteDataSourceImpl(this._dioClient);
+  RestaurantRemoteDataSourceImpl(this._dioClient, this._sessionService);
 
   @override
   Future<RestaurantInfoDto?> getRestaurantInfo(String merchantId, double lat, double lng) async {
@@ -86,7 +101,6 @@ class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
     }
   }
 
-  // ✅ اضافه شده: دریافت جزئیات یک غذا
   @override
   Future<ItemDetailsDto?> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng) async {
     log('🌐 [API Call] درخواست جزئیات غذا (ItemID: $itemId) برای رستوران (ID: $merchantId)');
@@ -103,7 +117,7 @@ class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
       );
 
       final data = response.data;
-      if (data['code'] == 1 && data['details'] != null) {
+      if (data['code'] == 1 && data['details'] != null && data['details'] is Map<String, dynamic>) {
         log('✅ [API Success] جزئیات غذا با موفقیت دریافت شد.');
         return ItemDetailsDto.fromJson(data['details']);
       } else {
@@ -113,6 +127,89 @@ class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
     } catch (e) {
       log('❌ [API Error] خطا در دریافت جزئیات غذا: $e');
       return null;
+    }
+  }
+
+  @override
+  Future<SearchCategoryResponseDto> searchFoodCategory({
+    required String query,
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final Map<String, dynamic> params = {
+        'item_name': query,
+        'merchant_id': merchantId,
+        'device_id': _sessionService.deviceId,
+        'device_platform': 'android',
+        'device_uiid': _sessionService.deviceUiid,
+        'code_version': '1.5',
+        'user_token': _sessionService.userToken,
+        'lang': 'ir',
+        'lat': lat,
+        'lng': lng,
+        'current_page': 'search_category',
+      };
+      log('🔍 [API] جستجوی درون منو: "$query" در فروشگاه $merchantId');
+      final response = await _dioClient.get('/searchFoodCategory', queryParameters: params);
+      final searchResponse = SearchCategoryResponseDto.fromJson(response.data);
+      log('✅ [API] تعداد دسته‌بندی‌های یافت شده: ${searchResponse.items.length}');
+      return searchResponse;
+    } catch (e, stack) {
+      log('❌ [API] خطا در جستجوی منو: $e\n$stack');
+      return SearchCategoryResponseDto(code: 0, msg: 'خطا در ارتباط با سرور', items: []);
+    }
+  }
+
+  @override
+  Future<MerchantAboutDto> getMerchantAbout({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final Map<String, dynamic> params = {
+        'merchant_id': merchantId,
+        'device_id': _sessionService.deviceId,
+        'device_platform': 'android',
+        'device_uiid': _sessionService.deviceUiid,
+        'code_version': '1.5',
+        'user_token': _sessionService.userToken,
+        'lang': 'ir',
+        'lat': lat,
+        'lng': lng,
+        'current_page': 'about',
+      };
+      log('📋 [API] درخواست اطلاعات رستوران (درباره) برای فروشگاه: $merchantId');
+      final response = await _dioClient.get('/GetMerchantAbout', queryParameters: params);
+      final about = MerchantAboutDto.fromJson(response.data);
+      log('✅ [API] اطلاعات درباره رستوران دریافت شد: ${about.data.restaurantName}');
+      return about;
+    } catch (e, stack) {
+      log('❌ [API] خطا در دریافت اطلاعات درباره رستوران: $e\n$stack');
+      return const MerchantAboutDto(
+        code: 0,
+        msg: 'خطا در ارتباط با سرور',
+        data: MerchantAboutDataDto(
+          merchantId: '',
+          restaurantName: '',
+          completeAddress: '',
+          restaurantPhone: '',
+          contactPhone: '',
+          latitude: '',
+          longitude: '',
+          merchantTableBooking: '',
+          cuisine: '',
+          rating: RatingDto(ratings: 0, votes: 0),
+          reviewCount: '0 نظر',
+          opening: [],
+          payment: [],
+          information: '',
+          website: '',
+          services: '',
+        ),
+      );
     }
   }
 }
