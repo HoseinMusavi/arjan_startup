@@ -10,8 +10,15 @@ import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/main/presentation/pages/main_wrapper.dart';
-import '../../features/profile/presentation/bloc/pages/profile_page.dart';
-import '../../features/orders/presentation/pages/orders_page.dart'; // ✅ اضافه شد
+import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
+import '../../features/profile/presentation/pages/change_password_page.dart';
+import '../../features/profile/presentation/pages/points_page.dart';
+import '../../features/profile/presentation/pages/point_details_page.dart';
+import '../../features/profile/presentation/pages/addresses_page.dart';
+import '../../features/profile/presentation/pages/add_edit_address_page.dart';
+import '../../features/profile/presentation/pages/notifications_page.dart';
+import '../../features/orders/presentation/pages/orders_page.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -96,26 +103,69 @@ class AppRouter {
             ],
           ),
 
-          // تب ۲: سفارشات ✅ اصلاح شده
+          // تب ۲: سفارشات
           StatefulShellBranch(
             navigatorKey: _shellNavigatorOrdersKey,
             routes: [
               GoRoute(
                 path: '/orders',
                 name: 'orders',
-                builder: (context, state) => const OrdersPage(), // ✅ جایگزین placeholder
+                builder: (context, state) => const OrdersPage(),
               ),
             ],
           ),
 
-          // تب ۳: پروفایل
+          // تب ۳: پروفایل ✅ با تمام مسیرهای زیرمجموعه
           StatefulShellBranch(
             navigatorKey: _shellNavigatorProfileKey,
             routes: [
+              // صفحه اصلی پروفایل
               GoRoute(
                 path: '/profile',
                 name: 'profile',
                 builder: (context, state) => const ProfilePage(),
+              ),
+              // ویرایش اطلاعات
+              GoRoute(
+                path: '/profile/edit',
+                name: 'edit-profile',
+                builder: (context, state) => const EditProfilePage(),
+              ),
+              // تغییر رمز عبور
+              GoRoute(
+                path: '/profile/change-password',
+                name: 'change-password',
+                builder: (context, state) => const ChangePasswordPage(),
+              ),
+              // کیف پول - خلاصه
+              GoRoute(
+                path: '/profile/points',
+                name: 'points',
+                builder: (context, state) => const PointsPage(),
+              ),
+              // کیف پول - جزئیات (با پارامتر pointType)
+              GoRoute(
+                path: '/profile/points/details',
+                name: 'points-details',
+                builder: (context, state) => const PointDetailsPage(),
+              ),
+              // آدرس‌ها - لیست
+              GoRoute(
+                path: '/profile/addresses',
+                name: 'addresses',
+                builder: (context, state) => const AddressesPage(),
+              ),
+              // آدرس‌ها - افزودن جدید
+              GoRoute(
+                path: '/profile/addresses/add',
+                name: 'add-address',
+                builder: (context, state) => const AddEditAddressPage(),
+              ),
+              // اعلان‌ها
+              GoRoute(
+                path: '/profile/notifications',
+                name: 'notifications',
+                builder: (context, state) => const NotificationsPage(),
               ),
             ],
           ),

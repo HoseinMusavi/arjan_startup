@@ -88,8 +88,9 @@ Future<void> setupServiceLocator() async {
   debugPrint('✅ [DI] Home Feature ثبت شد');
 
   // ==================== Profile Feature ====================
+  // 🔥 تغییر مهم: به جای SharedPreferences، از SessionService استفاده می‌کنیم
   getIt.registerLazySingleton<ProfileRemoteDataSource>(
-    () => ProfileRemoteDataSourceImpl(getIt<DioClient>(), getIt<SharedPreferences>()),
+    () => ProfileRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
   );
   getIt.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(getIt<ProfileRemoteDataSource>()),
@@ -98,7 +99,6 @@ Future<void> setupServiceLocator() async {
   debugPrint('✅ [DI] Profile Feature ثبت شد');
 
   // ==================== Restaurant Feature ====================
-  // ✅ اضافه کردن SessionService به عنوان پارامتر دوم
   getIt.registerLazySingleton<RestaurantRemoteDataSource>(
     () => RestaurantRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
   );

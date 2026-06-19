@@ -1,34 +1,57 @@
 import 'package:equatable/equatable.dart';
 
+/// مدل داده‌ای پروفایل کاربر
+/// منطبق با پاسخ API: /mobileappv2/api/GetProfile
 class ProfileDto extends Equatable {
+  final String avatar;
   final String firstName;
   final String lastName;
-  final int points;
-  final String avatar;
-  final String phone; // ✅ اضافه شد
+  final String fullName;
+  final String emailAddress;
+  final String contactPhone;
 
   const ProfileDto({
+    required this.avatar,
     required this.firstName,
     required this.lastName,
-    required this.points,
-    required this.avatar,
-    required this.phone,
+    required this.fullName,
+    required this.emailAddress,
+    required this.contactPhone,
   });
 
+  /// ساخت نمونه از JSON پاسخ سرور
+  /// ساختار پاسخ: { "details": { "data": { ... } } }
   factory ProfileDto.fromJson(Map<String, dynamic> json) {
-    // مسیر دیتا در لاگ شما: details -> data
-    final details = json['details'] ?? {};
-    final data = details['data'] ?? {};
-    
+    final details = json['details'] as Map<String, dynamic>? ?? {};
+    final data = details['data'] as Map<String, dynamic>? ?? {};
+
     return ProfileDto(
+      avatar: data['avatar']?.toString() ?? '',
       firstName: data['first_name']?.toString() ?? '',
       lastName: data['last_name']?.toString() ?? '',
-      points: int.tryParse(data['points']?.toString() ?? '0') ?? 0,
-      avatar: data['avatar']?.toString() ?? '',
-      phone: data['contact_phone']?.toString() ?? '', // ✅ دریافت شماره تماس
+      fullName: data['full_name']?.toString() ?? '',
+      emailAddress: data['email_address']?.toString() ?? '',
+      contactPhone: data['contact_phone']?.toString() ?? '',
     );
   }
 
+  /// تبدیل به JSON (برای ارسال به سرور در ویرایش)
+  Map<String, dynamic> toJson() {
+    return {
+      'first_name': firstName,
+      'last_name': lastName,
+      'contact_phone': contactPhone,
+      'email_address': emailAddress,
+    };
+  }
+
   @override
-  List<Object?> get props => [firstName, lastName, points, avatar, phone];
+  List<Object?> get props => [
+        avatar,
+        firstName,
+        lastName,
+        fullName,
+        emailAddress,
+        contactPhone,
+      ];
 }
