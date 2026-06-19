@@ -47,30 +47,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
           ],
         ),
-        body: BlocConsumer<ProfileBloc, ProfileState>(
-          listener: (context, state) {
-            if (state is ProfileError) {
-              debugPrint('❌ [NotificationsPage] Error: ${state.message}');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
+        body: RefreshIndicator(
+          onRefresh: () async {
+            debugPrint('🔄 [NotificationsPage] Pull to refresh');
+            _profileBloc.add(const ProfileNotificationsRequested());
           },
-          builder: (context, state) {
-            if (state is ProfileNotificationsLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is ProfileNotificationsLoaded) {
-              return _buildNotificationsContent(context, state.notifications);
-            }
-            if (state is ProfileError) {
-              return _buildErrorWidget(context, state.message);
-            }
-            return const Center(child: Text('داده‌ای وجود ندارد'));
-          },
+          child: BlocConsumer<ProfileBloc, ProfileState>(
+            listener: (context, state) {
+              if (state is ProfileError) {
+                debugPrint('❌ [NotificationsPage] Error: ${state.message}');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              if (state is ProfileNotificationsLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is ProfileNotificationsLoaded) {
+                return _buildNotificationsContent(context, state.notifications);
+              }
+              if (state is ProfileError) {
+                return _buildErrorWidget(context, state.message);
+              }
+              return const Center(child: Text('داده‌ای وجود ندارد'));
+            },
+          ),
         ),
       ),
     );
@@ -141,32 +147,53 @@ class _NotificationsPageState extends State<NotificationsPage> {
       itemBuilder: (context, index) {
         final notification = notifications[index];
         return Card(
-          elevation: 1,
+          elevation: 1.5,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: ExpansionTile(
             leading: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade100),
               ),
-              child: const Icon(Icons.notifications_active, color: Colors.blue, size: 20),
+              child: const Icon(
+                Icons.notifications_active,
+                color: Colors.orange,
+                size: 22,
+              ),
             ),
             title: Text(
               notification.pushTitle,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
             ),
             subtitle: Text(
               notification.dateCreated,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+            ),
+            trailing: const Icon(
+              Icons.expand_more,
+              color: Colors.grey,
             ),
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   notification.pushMessage,
-                  style: const TextStyle(fontSize: 14, height: 1.5),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: Color(0xFF333333),
+                  ),
                 ),
               ),
             ],

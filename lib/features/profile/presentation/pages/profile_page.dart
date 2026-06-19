@@ -3,11 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:arjan_startup/core/di/service_locator.dart';
 import 'package:arjan_startup/features/auth/presentation/bloc/auth_bloc.dart';
+
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
 
-/// صفحه اصلی پروفایل کاربر
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -15,38 +15,37 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  // ✅ نمونه‌های Bloc را مستقیماً از GetIt می‌گیریم
+class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
   late final ProfileBloc _profileBloc;
   late final AuthBloc _authBloc;
+  late final AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('📱 [ProfilePage] initState - getting Bloc instances');
-
-    // دریافت نمونه‌ها از GetIt
     _profileBloc = getIt<ProfileBloc>();
     _authBloc = getIt<AuthBloc>();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
 
-    // ارسال رویداد بارگذاری پروفایل (مستقیماً از خود Bloc)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        debugPrint('📱 [ProfilePage] Sending ProfileRequested event');
         _profileBloc.add(const ProfileRequested());
+        _animationController.forward();
       }
     });
   }
 
   @override
   void dispose() {
-    debugPrint('📱 [ProfilePage] dispose');
+    _animationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ارائه Blocها به درخت ویجت با استفاده از نمونه‌های موجود
     return MultiBlocProvider(
       providers: [
         BlocProvider.value(value: _profileBloc),
@@ -55,51 +54,40 @@ class _ProfilePageState extends State<ProfilePage> {
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthInitial) {
-            debugPrint('🚪 [ProfilePage] AuthInitial detected - navigating to login');
             context.go('/login');
           }
         },
         child: Scaffold(
-          backgroundColor: Colors.grey.shade50,
-          appBar: AppBar(
-            title: const Text(
-              'پروفایل کاربری',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            centerTitle: true,
-            elevation: 0,
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black87,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () {
-                  debugPrint('⚙️ [ProfilePage] Settings button pressed');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تنظیمات در حال توسعه...')),
-                  );
-                },
-              ),
-            ],
-          ),
+          backgroundColor: const Color(0xFFF5F7FA),
           body: BlocBuilder<ProfileBloc, ProfileState>(
             builder: (context, state) {
-              debugPrint('🔄 [ProfilePage] BlocBuilder state: $state');
-
               if (state is ProfileLoading) {
-                return const Center(child: CircularProgressIndicator());
+                // ✅ Loading حرفه‌ای
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        color: Color(0xFFFF7A00),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'در حال دریافت اطلاعات...',
+                        style: TextStyle(
+                          fontFamily: 'Vazir',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               }
-
               if (state is ProfileError) {
-                return _buildErrorWidget(context, state.message);
+                return _buildErrorState(context, state.message);
               }
-
               if (state is ProfileLoaded) {
                 return _buildProfileContent(context, state.profile);
               }
-
-              // حالت‌های دیگر (مثلاً ProfileInitial) - نمایش placeholder
-              return const Center(child: Text('در حال بارگذاری...'));
+              return const Center(child: CircularProgressIndicator());
             },
           ),
         ),
@@ -107,44 +95,93 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// ویجت نمایش خطا با دکمه تلاش مجدد
-  Widget _buildErrorWidget(BuildContext context, String message) {
+  Widget _buildErrorState(BuildContext context, String message) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'خطا در بارگذاری',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontFamily: 'Vazir',
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Vazir',
+                fontSize: 14,
+                color: Color(0xFF6B6B6B),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _profileBloc.add(const ProfileRequested()),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text(
+                'تلاش مجدد',
+                style: TextStyle(fontFamily: 'Vazir', fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7A00),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ متد جدید برای ساخت نشان‌های هدر
+  Widget _buildBadge(
+    IconData icon,
+    String title,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.15),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: Colors.white.withOpacity(.25),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-          const SizedBox(height: 16),
-          Text(
-            'خطا در بارگذاری پروفایل',
-            style: Theme.of(context).textTheme.titleMedium,
+          Icon(
+            icon,
+            size: 16,
+            color: Colors.white,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(width: 6),
           Text(
-            message,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              debugPrint('🔄 [ProfilePage] Retry button pressed');
-              // ✅ استفاده از _profileBloc به جای context.read
-              _profileBloc.add(const ProfileRequested());
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('تلاش مجدد'),
+            title,
+            style: const TextStyle(
+              fontFamily: 'Vazir',
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// محتوای اصلی پروفایل (پس از بارگذاری موفق)
   Widget _buildProfileContent(BuildContext context, dynamic profile) {
-    // profile از نوع ProfileDto است
     final avatar = profile.avatar ?? '';
     final firstName = profile.firstName ?? '';
     final lastName = profile.lastName ?? '';
@@ -153,360 +190,463 @@ class _ProfilePageState extends State<ProfilePage> {
     final emailAddress = profile.emailAddress ?? '';
     final hasAvatar = avatar.isNotEmpty;
 
-    debugPrint('📱 [ProfilePage] Rendering profile for: $fullName ($contactPhone)');
+    final menuItems = [
+      _MenuItem(
+        icon: Icons.edit_outlined,
+        color: Colors.blue.shade600,
+        title: 'ویرایش اطلاعات',
+        subtitle: 'نام، شماره، ایمیل',
+        route: '/profile/edit',
+      ),
+      _MenuItem(
+        icon: Icons.account_balance_wallet_outlined,
+        color: Colors.green.shade600,
+        title: 'کیف پول',
+        subtitle: 'موجودی و تراکنش‌ها',
+        route: '/profile/points',
+      ),
+      _MenuItem(
+        icon: Icons.location_on_outlined,
+        color: Colors.purple.shade600,
+        title: 'آدرس‌های من',
+        subtitle: 'مدیریت آدرس‌ها',
+        route: '/profile/addresses',
+      ),
+      _MenuItem(
+        icon: Icons.notifications_outlined,
+        color: const Color(0xFFFF7A00),
+        title: 'اعلان‌ها',
+        subtitle: 'پیام‌ها و اطلاعیه‌ها',
+        route: '/profile/notifications',
+      ),
+      _MenuItem(
+        icon: Icons.support_outlined,
+        color: Colors.teal.shade600,
+        title: 'پشتیبانی',
+        subtitle: 'ارتباط با ما',
+        route: null,
+      ),
+    ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ==================== هدر پروفایل ====================
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+    return RefreshIndicator(
+      onRefresh: () async {
+        _profileBloc.add(const ProfileRequested());
+      },
+      color: const Color(0xFFFF7A00),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ==================== اسلیور اپ‌بار مدرن ====================
+          SliverAppBar(
+            expandedHeight: 260, // ✅ افزایش ارتفاع
+            pinned: true,
+            elevation: 0,
+            backgroundColor: const Color(0xFFFF7A00),
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: true,
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFFF7A00),
+                      Color(0xFFFFA63D),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // آواتار
-                Stack(
-                  children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.shade200,
-                        border: Border.all(
-                          color: Colors.orange.shade300,
-                          width: 3,
-                        ),
-                        image: hasAvatar
-                            ? DecorationImage(
-                                image: NetworkImage(avatar),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: !hasAvatar
-                          ? Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Colors.grey.shade400,
-                            )
-                          : null,
-                    ),
-                    // دکمه تغییر آواتار (برای آینده)
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // نام کامل
-                Text(
-                  fullName.isNotEmpty ? fullName : 'کاربر گرامی',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-
-                // شماره تماس
-                if (contactPhone.isNotEmpty)
-                  Text(
-                    contactPhone,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                const SizedBox(height: 8),
-
-                // ایمیل (در صورت وجود)
-                if (emailAddress.isNotEmpty)
-                  Text(
-                    emailAddress,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                const SizedBox(height: 12),
-
-                // امتیاز (با توجه به اینکه فعلاً از ProfileDto امتیاز نداریم، یک مقدار پیش‌فرض)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                child: SafeArea(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.stars_rounded, color: Colors.orange, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        '۰ امتیاز',
-                        style: TextStyle(
-                          color: Colors.orange.shade900,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(.5),
+                            width: 3,
+                          ),
                         ),
+                        child: CircleAvatar(
+                          radius: 46,
+                          backgroundColor: Colors.white24,
+                          backgroundImage:
+                              hasAvatar ? NetworkImage(avatar) : null,
+                          child: !hasAvatar
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 48,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      Text(
+                        fullName.isNotEmpty
+                            ? fullName
+                            : 'کاربر گرامی',
+                        style: const TextStyle(
+                          fontFamily: 'Vazir',
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      if (contactPhone.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            contactPhone,
+                            style: const TextStyle(
+                              fontFamily: 'Vazir',
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 12),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildBadge(
+                            Icons.star_rounded,
+                            '۰ امتیاز',
+                          ),
+                          const SizedBox(width: 8),
+                          _buildBadge(
+                            Icons.verified_user_outlined,
+                            'عضو فعال',
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-
-          const SizedBox(height: 20),
 
           // ==================== لیست منوها ====================
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildMenuItem(
-                  context,
-                  icon: Icons.edit_outlined,
-                  iconColor: Colors.blue,
-                  title: 'ویرایش اطلاعات',
-                  subtitle: 'نام، شماره، ایمیل',
-                  onTap: () {
-                    debugPrint('📝 [ProfilePage] Navigate to EditProfile');
-                    context.push('/profile/edit');
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.account_balance_wallet_outlined,
-                  iconColor: Colors.green,
-                  title: 'کیف پول',
-                  subtitle: 'موجودی و تراکنش‌ها',
-                  onTap: () {
-                    debugPrint('💰 [ProfilePage] Navigate to Points');
-                    context.push('/profile/points');
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.location_on_outlined,
-                  iconColor: Colors.purple,
-                  title: 'آدرس‌های من',
-                  subtitle: 'مدیریت آدرس‌ها',
-                  onTap: () {
-                    debugPrint('📍 [ProfilePage] Navigate to Addresses');
-                    context.push('/profile/addresses');
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.notifications_outlined,
-                  iconColor: Colors.orange,
-                  title: 'اعلان‌ها',
-                  subtitle: 'پیام‌ها و اطلاعیه‌ها',
-                  onTap: () {
-                    debugPrint('🔔 [ProfilePage] Navigate to Notifications');
-                    context.push('/profile/notifications');
-                  },
-                ),
-                _buildDivider(),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.support_outlined,
-                  iconColor: Colors.teal,
-                  title: 'پشتیبانی',
-                  subtitle: 'ارتباط با ما',
-                  onTap: () {
-                    debugPrint('📞 [ProfilePage] Navigate to Support');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('پشتیبانی: ۰۲۱-۱۲۳۴۵۶۷۸')),
-                    );
-                  },
-                ),
-              ],
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == 0) return _buildMenuSection(context, menuItems);
+                  if (index == 1) return _buildLogoutSection(context);
+                  return const SizedBox.shrink();
+                },
+                childCount: 2,
+              ),
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          // ==================== دکمه خروج ====================
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: _buildMenuItem(
-              context,
-              icon: Icons.logout,
-              iconColor: Colors.red,
-              title: 'خروج از حساب کاربری',
-              subtitle: 'اطلاعات شما حذف نمی‌شود',
-              onTap: () => _showLogoutDialog(context),
-              isLogout: true,
-            ),
-          ),
-
-          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  /// ویجت آیتم منو
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool isLogout = false,
-  }) {
+  Widget _buildMenuSection(BuildContext context, List<_MenuItem> items) {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24), // ✅ گردی بیشتر
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 24, // ✅ سایه بیشتر
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.grey.shade100, // ✅ اضافه شدن border
+            ),
+          ),
+          child: Column(
+            children: items.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return Column(
+                children: [
+                  _buildMenuItemTile(context, item),
+                  if (index < items.length - 1)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Divider(
+                        color: Colors.grey.shade100,
+                        height: 1,
+                        thickness: 1,
+                      ),
+                    ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // ✅ متد جدید _buildMenuItemTile با طراحی مدرن
+  Widget _buildMenuItemTile(
+    BuildContext context,
+    _MenuItem item,
+  ) {
     return ListTile(
+      minLeadingWidth: 20,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 6,
+      ),
+      onTap: () {
+        if (item.route != null) {
+          context.push(item.route!);
+        } else {
+          _showSupportDialog(context);
+        }
+      },
       leading: Container(
-        padding: const EdgeInsets.all(8),
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          color: item.color.withOpacity(.1),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(
-          icon,
-          color: iconColor,
-          size: 24,
+          item.icon,
+          color: item.color,
         ),
       ),
       title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          color: isLogout ? Colors.red : Colors.black87,
+        item.title,
+        style: const TextStyle(
+          fontFamily: 'Vazir',
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
         ),
       ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey.shade500,
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          item.subtitle,
+          style: TextStyle(
+            fontFamily: 'Vazir',
+            fontSize: 11,
+            color: Colors.grey.shade600,
+          ),
         ),
       ),
-      trailing: Icon(
-        Icons.arrow_forward_ios,
-        size: 16,
-        color: isLogout ? Colors.red.shade300 : Colors.grey.shade400,
+      trailing: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.chevron_left_rounded,
+          size: 18,
+        ),
       ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 
-  /// جداکننده بین آیتم‌های منو
-  Widget _buildDivider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Divider(
-        color: Colors.grey.shade200,
-        height: 1,
-        thickness: 1,
+  // ✅ کارت خروج با طراحی Premium
+  Widget _buildLogoutSection(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8F7), // ✅ رنگ ویژه
+        borderRadius: BorderRadius.circular(24), // ✅ گردی بیشتر
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: const Color(0xFFFFD9D3), // ✅ border ویژه
+        ),
+      ),
+      child: ListTile(
+        onTap: () => _showLogoutDialog(context),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Colors.red.shade200,
+              width: 1,
+            ),
+          ),
+          child: const Icon(
+            Icons.logout,
+            color: Colors.red,
+            size: 20,
+          ),
+        ),
+        title: const Text(
+          'خروج از حساب کاربری',
+          style: TextStyle(
+            fontFamily: 'Vazir',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.red,
+          ),
+        ),
+        subtitle: const Text(
+          'اطلاعات شما حفظ می‌شود',
+          style: TextStyle(
+            fontFamily: 'Vazir',
+            fontSize: 11,
+            color: Colors.grey,
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 14,
+          color: Colors.red.shade300,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        dense: true,
       ),
     );
   }
 
-  /// دیالوگ خروج از حساب
+  void _showSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'پشتیبانی',
+          style: TextStyle(fontFamily: 'Vazir', fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'شماره تماس:',
+              style: TextStyle(fontFamily: 'Vazir', fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              '۰۲۱-۱۲۳۴۵۶۷۸',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                fontSize: 16,
+                color: Color(0xFFFF7A00),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'ساعات پاسخگویی:',
+              style: TextStyle(fontFamily: 'Vazir', fontWeight: FontWeight.w500),
+            ),
+            const Text(
+              'شنبه تا چهارشنبه ۹ تا ۱۸',
+              style: TextStyle(fontFamily: 'Vazir', fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'بستن',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                color: Color(0xFFFF7A00),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLogoutDialog(BuildContext context) {
-    debugPrint('🚪 [ProfilePage] Show logout dialog');
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('خروج از حساب'),
+            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+            const SizedBox(width: 8),
+            const Text(
+              'خروج از حساب',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         content: const Text(
-          'آیا مطمئن هستید که می‌خواهید از حساب کاربری خود خارج شوید؟',
-          style: TextStyle(fontSize: 15),
+          'آیا مطمئن هستید که می‌خواهید خارج شوید؟',
+          style: TextStyle(
+            fontFamily: 'Vazir',
+            fontSize: 15,
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              debugPrint('❌ [ProfilePage] Logout cancelled');
-              Navigator.pop(dialogContext);
-            },
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'انصراف',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(fontFamily: 'Vazir', color: Colors.grey),
             ),
           ),
           ElevatedButton(
             onPressed: () {
-              debugPrint('✅ [ProfilePage] Logout confirmed');
               Navigator.pop(dialogContext);
-              // ارسال رویداد خروج به AuthBloc (با استفاده از _authBloc)
               _authBloc.add(AuthLogout());
-              // همچنین می‌توان رویداد خروج را به ProfileBloc هم ارسال کرد
               _profileBloc.add(ProfileLogoutRequested());
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('خروج'),
+            child: const Text(
+              'خروج',
+              style: TextStyle(fontFamily: 'Vazir', fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _MenuItem {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final String? route;
+
+  const _MenuItem({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    this.route,
+  });
 }

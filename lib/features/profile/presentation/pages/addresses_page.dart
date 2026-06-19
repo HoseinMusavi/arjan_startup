@@ -46,41 +46,47 @@ class _AddressesPageState extends State<AddressesPage> {
             ),
           ],
         ),
-        body: BlocConsumer<ProfileBloc, ProfileState>(
-          listener: (context, state) {
-            if (state is ProfileAddressActionSuccess) {
-              debugPrint('✅ [AddressesPage] Success: ${state.message}');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-              _profileBloc.add(const ProfileAddressesRequested());
-            }
-            if (state is ProfileError) {
-              debugPrint('❌ [AddressesPage] Error: ${state.message}');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
+        body: RefreshIndicator(
+          onRefresh: () async {
+            debugPrint('🔄 [AddressesPage] Pull to refresh');
+            _profileBloc.add(const ProfileAddressesRequested());
           },
-          builder: (context, state) {
-            if (state is ProfileAddressesLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is ProfileAddressesLoaded) {
-              return _buildAddressesContent(context, state.addresses);
-            }
-            if (state is ProfileError) {
-              return _buildErrorWidget(context, state.message);
-            }
-            return const Center(child: Text('داده‌ای وجود ندارد'));
-          },
+          child: BlocConsumer<ProfileBloc, ProfileState>(
+            listener: (context, state) {
+              if (state is ProfileAddressActionSuccess) {
+                debugPrint('✅ [AddressesPage] Success: ${state.message}');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+                _profileBloc.add(const ProfileAddressesRequested());
+              }
+              if (state is ProfileError) {
+                debugPrint('❌ [AddressesPage] Error: ${state.message}');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              if (state is ProfileAddressesLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is ProfileAddressesLoaded) {
+                return _buildAddressesContent(context, state.addresses);
+              }
+              if (state is ProfileError) {
+                return _buildErrorWidget(context, state.message);
+              }
+              return const Center(child: Text('داده‌ای وجود ندارد'));
+            },
+          ),
         ),
       ),
     );
@@ -155,7 +161,9 @@ class _AddressesPageState extends State<AddressesPage> {
         return Card(
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: Dismissible(
             key: Key(address.id),
             direction: DismissDirection.endToStart,
@@ -163,8 +171,8 @@ class _AddressesPageState extends State<AddressesPage> {
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
               decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.red.shade400,
+                borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(Icons.delete, color: Colors.white, size: 28),
             ),
@@ -175,10 +183,10 @@ class _AddressesPageState extends State<AddressesPage> {
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
               leading: Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isDefault ? Colors.orange.shade100 : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   isDefault ? Icons.home : Icons.location_on,
@@ -187,7 +195,7 @@ class _AddressesPageState extends State<AddressesPage> {
               ),
               title: Text(
                 address.address,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -197,10 +205,10 @@ class _AddressesPageState extends State<AddressesPage> {
                   if (isDefault)
                     Container(
                       margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: Colors.orange.shade200),
                       ),
                       child: const Text(

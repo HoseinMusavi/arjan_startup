@@ -7,7 +7,6 @@ import '../models/point_detail_dto.dart';
 import '../models/address_dto.dart';
 import '../models/notification_dto.dart';
 
-/// اینترفیس دیتاسورس راه‌دور پروفایل
 abstract class ProfileRemoteDataSource {
   Future<ProfileDto> getProfile({String? currentPage});
   Future<void> updateProfile({
@@ -35,12 +34,10 @@ abstract class ProfileRemoteDataSource {
   Future<Map<String, String>> getCountryList({String? currentPage});
 }
 
-/// پیاده‌سازی دیتاسورس با Dio
 class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   final DioClient _client;
   final SessionService _sessionService;
 
-  // کلید API ثابت (مطابق درخواست‌های ارسالی)
   static const String _apiKey = 'OOMW8CGDJJDRW3NBSABe3K26F7HQ75VGN';
   static const String _platform = 'android';
   static const String _codeVersion = '1.5';
@@ -50,7 +47,6 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   ProfileRemoteDataSourceImpl(this._client, this._sessionService);
 
-  /// متد کمکی برای ساخت پارامترهای پایه هر درخواست
   Map<String, dynamic> _buildBaseParams({
     String? currentPage,
     String? action,
@@ -115,13 +111,12 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }) async {
     debugPrint('📡 [Profile] Calling updateProfile API...');
     final params = _buildBaseParams(currentPage: currentPage);
-    // دیتای فرم برای POST
     final data = {
       'first_name': firstName,
       'last_name': lastName,
       'contact_phone': contactPhone,
       'email_address': emailAddress,
-      ...params, // پارامترهای پایه باید در body ارسال شوند (چون API به فرم-urlencoded نیاز دارد)
+      ...params,
     };
 
     final response = await _client.post('/UpdateProfile', data: data);
@@ -163,6 +158,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final response = await _client.get('/GetPointSummary', queryParameters: params);
 
     debugPrint('✅ [Profile] getPointSummary response code: ${response.data['code']}');
+    // ✅ مدیریت کد ۶ (هیچ نتیجه‌ای)
+    if (response.data['code'] == 6) {
+      debugPrint('📭 [Profile] getPointSummary: No data (code 6), returning empty list');
+      return [];
+    }
     final dataList = response.data['details']?['data'] as List? ?? [];
     return dataList.map((item) => PointSummaryDto.fromJson(item)).toList();
   }
@@ -181,6 +181,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final response = await _client.get('/GetPointDetails', queryParameters: params);
 
     debugPrint('✅ [Profile] getPointDetails response code: ${response.data['code']}');
+    // ✅ مدیریت کد ۶ (هیچ نتیجه‌ای)
+    if (response.data['code'] == 6) {
+      debugPrint('📭 [Profile] getPointDetails: No data (code 6), returning empty list');
+      return [];
+    }
     final dataList = response.data['details']?['data'] as List? ?? [];
     return dataList.map((item) => PointDetailDto.fromJson(item)).toList();
   }
@@ -199,6 +204,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final response = await _client.get('/AddressBookList', queryParameters: params);
 
     debugPrint('✅ [Profile] getAddressList response code: ${response.data['code']}');
+    // ✅ مدیریت کد ۶ (هیچ نتیجه‌ای)
+    if (response.data['code'] == 6) {
+      debugPrint('📭 [Profile] getAddressList: No data (code 6), returning empty list');
+      return [];
+    }
     final dataList = response.data['details']?['data'] as List? ?? [];
     return dataList.map((item) => AddressDto.fromJson(item)).toList();
   }
@@ -244,11 +254,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final response = await _client.get('/GetNotifications', queryParameters: params);
 
     debugPrint('✅ [Profile] getNotifications response code: ${response.data['code']}');
+    // ✅ مدیریت کد ۶ (هیچ نتیجه‌ای)
+    if (response.data['code'] == 6) {
+      debugPrint('📭 [Profile] getNotifications: No data (code 6), returning empty list');
+      return [];
+    }
     final dataList = response.data['details']?['data'] as List? ?? [];
     return dataList.map((item) => NotificationDto.fromJson(item)).toList();
   }
 
-  // ==================== ۱۰. دریافت لیست کشورها (برای فرم آدرس) ====================
+  // ==================== ۱۰. دریافت لیست کشورها ====================
   @override
   Future<Map<String, String>> getCountryList({String? currentPage = 'address_book'}) async {
     debugPrint('📡 [Profile] Calling getCountryList API...');

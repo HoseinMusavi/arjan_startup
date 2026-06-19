@@ -47,7 +47,10 @@ class _PointDetailsPageState extends State<PointDetailsPage> {
       value: _profileBloc,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_pageTitle),
+          title: Text(
+            _pageTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           centerTitle: true,
           elevation: 0,
           backgroundColor: Colors.white,
@@ -57,30 +60,36 @@ class _PointDetailsPageState extends State<PointDetailsPage> {
             onPressed: () => context.pop(),
           ),
         ),
-        body: BlocConsumer<ProfileBloc, ProfileState>(
-          listener: (context, state) {
-            if (state is ProfileError) {
-              debugPrint('❌ [PointDetailsPage] Error: ${state.message}');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
+        body: RefreshIndicator(
+          onRefresh: () async {
+            debugPrint('🔄 [PointDetailsPage] Pull to refresh');
+            _profileBloc.add(ProfilePointDetailsRequested(pointType: _pointType));
           },
-          builder: (context, state) {
-            if (state is ProfilePointDetailsLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is ProfilePointDetailsLoaded) {
-              return _buildDetailsContent(context, state.details);
-            }
-            if (state is ProfileError) {
-              return _buildErrorWidget(context, state.message);
-            }
-            return const Center(child: Text('داده‌ای وجود ندارد'));
-          },
+          child: BlocConsumer<ProfileBloc, ProfileState>(
+            listener: (context, state) {
+              if (state is ProfileError) {
+                debugPrint('❌ [PointDetailsPage] Error: ${state.message}');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              if (state is ProfilePointDetailsLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is ProfilePointDetailsLoaded) {
+                return _buildDetailsContent(context, state.details);
+              }
+              if (state is ProfileError) {
+                return _buildErrorWidget(context, state.message);
+              }
+              return const Center(child: Text('داده‌ای وجود ندارد'));
+            },
+          ),
         ),
       ),
     );
@@ -135,6 +144,11 @@ class _PointDetailsPageState extends State<PointDetailsPage> {
                     color: Colors.grey.shade600,
                   ),
             ),
+            const SizedBox(height: 8),
+            const Text(
+              'به زودی تراکنش‌های شما اینجا نمایش داده می‌شود.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -146,28 +160,53 @@ class _PointDetailsPageState extends State<PointDetailsPage> {
       itemBuilder: (context, index) {
         final item = details[index];
         return Card(
-          elevation: 1,
+          elevation: 1.5,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
             leading: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.green.shade200),
               ),
-              child: Icon(Icons.attach_money, color: Colors.green.shade700, size: 20),
+              child: Icon(
+                Icons.attach_money,
+                color: Colors.green.shade700,
+                size: 22,
+              ),
             ),
-            title: Text(item.label, style: const TextStyle(fontWeight: FontWeight.w500)),
+            title: Text(
+              item.label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
             subtitle: Text(
               item.date,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-            ),
-            trailing: Text(
-              '${item.points} امتیاز',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.green.shade700,
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${item.points} امتیاز',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.green.shade800,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),

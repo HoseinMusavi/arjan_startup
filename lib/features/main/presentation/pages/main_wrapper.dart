@@ -14,10 +14,11 @@ class MainWrapper extends StatelessWidget {
 
   void _goBranch(int index, BuildContext context) {
     final storeType = _getStoreTypeFromIndex(index);
+
     if (storeType != null) {
       context.read<StoreProvider>().setStore(storeType);
     }
-    
+
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
@@ -31,7 +32,7 @@ class MainWrapper extends StatelessWidget {
       case 1:
         return StoreType.supermarket;
       case 2:
-        return null; // ✅ سفارشات - بدون تغییر استور
+        return null;
       case 3:
         return StoreType.profile;
       default:
@@ -48,59 +49,55 @@ class MainWrapper extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: Consumer<StoreProvider>(
         builder: (context, storeProvider, _) {
-          final activeColor = _getColorForIndex(currentIndex, storeProvider);
-          
           return Container(
             decoration: BoxDecoration(
               color: Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
+                ),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 15,
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
                   offset: const Offset(0, -2),
                 ),
               ],
             ),
             child: SafeArea(
+              top: false,
               child: SizedBox(
-                height: 58,
+                height: 65,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildNavItem(
-                      index: 0,
                       label: 'رستوران',
-                      iconOutline: Icons.restaurant_outlined,
-                      iconFilled: Icons.restaurant_rounded,
+                      icon: Icons.lunch_dining_rounded,
                       isSelected: currentIndex == 0,
-                      selectedColor: activeColor,
+                      selectedColor: const Color(0xFFFF7A00),
                       onTap: () => _goBranch(0, context),
                     ),
                     _buildNavItem(
-                      index: 1,
                       label: 'سوپرمارکت',
-                      iconOutline: Icons.store_outlined,
-                      iconFilled: Icons.store_rounded,
+                      icon: Icons.local_grocery_store_rounded,
                       isSelected: currentIndex == 1,
-                      selectedColor: activeColor,
+                      selectedColor: Colors.teal,
                       onTap: () => _goBranch(1, context),
                     ),
                     _buildNavItem(
-                      index: 2,
                       label: 'سفارشات',
-                      iconOutline: Icons.receipt_long_outlined,
-                      iconFilled: Icons.receipt_long_rounded,
+                      icon: Icons.receipt_long_rounded,
                       isSelected: currentIndex == 2,
-                      selectedColor: activeColor,
+                      selectedColor: const Color(0xFFFF7A00),
                       onTap: () => _goBranch(2, context),
                     ),
                     _buildNavItem(
-                      index: 3,
                       label: 'پروفایل',
-                      iconOutline: Icons.person_outline_rounded,
-                      iconFilled: Icons.person_rounded,
+                      icon: Icons.account_circle_rounded,
                       isSelected: currentIndex == 3,
-                      selectedColor: activeColor,
+                      selectedColor: const Color(0xFFFF7A00),
                       onTap: () => _goBranch(3, context),
                     ),
                   ],
@@ -113,85 +110,65 @@ class MainWrapper extends StatelessWidget {
     );
   }
 
-  Color _getColorForIndex(int index, StoreProvider storeProvider) {
-    switch (index) {
-      case 0:
-        return StoreType.restaurant.primaryColor;
-      case 1:
-        return StoreType.supermarket.primaryColor;
-      case 2:
-        return const Color(0xFFFF7A00); // ✅ رنگ نارنجی برای تب سفارشات
-      case 3:
-        return StoreType.profile.primaryColor;
-      default:
-        return storeProvider.currentStore.primaryColor;
-    }
-  }
-
   Widget _buildNavItem({
-    required int index,
     required String label,
-    required IconData iconOutline,
-    required IconData iconFilled,
+    required IconData icon,
     required bool isSelected,
     required Color selectedColor,
     required VoidCallback onTap,
   }) {
-    final Color itemColor = isSelected ? selectedColor : Colors.grey.shade400;
-    
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return ScaleTransition(
-                    scale: animation,
-                    child: child,
-                  );
-                },
-                child: isSelected
-                    ? Icon(
-                        iconFilled,
-                        key: ValueKey<String>('filled_$index'),
-                        color: itemColor,
-                        size: 25,
-                      )
-                    : Icon(
-                        iconOutline,
-                        key: ValueKey<String>('outline_$index'),
-                        color: itemColor,
-                        size: 24,
-                      ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                height: isSelected ? 16 : 0,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 250),
-                  opacity: isSelected ? 1.0 : 0.0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: itemColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  width: isSelected ? 26 : 0,
+                  height: 3,
+                  margin: const EdgeInsets.only(bottom: 5),
+                  decoration: BoxDecoration(
+                    color: selectedColor,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-              ),
-            ],
+
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 200),
+                  scale: isSelected ? 1.1 : 1,
+                  child: Icon(
+                    icon,
+                    size: 24,
+                    color: isSelected
+                        ? selectedColor
+                        : Colors.grey.shade500,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: isSelected
+                        ? selectedColor
+                        : Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
