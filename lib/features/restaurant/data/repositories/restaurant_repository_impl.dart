@@ -9,6 +9,7 @@ import '../models/menu_item_dto.dart';
 import '../models/item_details_dto.dart';
 import '../models/search_category_item_dto.dart';
 import '../models/merchant_about_dto.dart';
+import '../models/review_dto.dart';
 
 class RestaurantRepositoryImpl implements RestaurantRepository {
   final RestaurantRemoteDataSource _dataSource;
@@ -104,6 +105,38 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
       }
     } catch (e) {
       return Left(ServerFailure('خطا در دریافت اطلاعات رستوران: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ReviewListResponseDto>> getReviews({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.getReviews(merchantId: merchantId, lat: lat, lng: lng);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure('خطا در دریافت نظرات: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> toggleFavorite({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.toggleFavorite(merchantId: merchantId, lat: lat, lng: lng);
+      if (result['success'] == true) {
+        return Right(result);
+      } else {
+        return Left(ServerFailure(result['message'] ?? 'خطا در تغییر وضعیت علاقه‌مندی'));
+      }
+    } catch (e) {
+      return Left(ServerFailure('خطا در تغییر علاقه‌مندی: ${e.toString()}'));
     }
   }
 }

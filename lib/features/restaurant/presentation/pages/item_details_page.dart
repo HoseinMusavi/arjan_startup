@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:arjan_startup/core/di/service_locator.dart';
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
-import 'package:arjan_startup/features/restaurant/presentation/bloc/restaurant_bloc.dart';
+import 'package:arjan_startup/features/restaurant/presentation/bloc/restaurant/restaurant_bloc.dart';
 import 'package:arjan_startup/features/restaurant/data/models/item_details_dto.dart';
 import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart';
 

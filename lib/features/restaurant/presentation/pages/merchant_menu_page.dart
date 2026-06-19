@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'package:arjan_startup/features/cart/presentation/pages/cart_page.dart';
+import 'package:arjan_startup/features/restaurant/presentation/bloc/restaurant/restaurant_bloc.dart';
+import 'package:arjan_startup/features/restaurant/presentation/pages/widgets/favorite_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:arjan_startup/core/di/service_locator.dart';
 import 'package:arjan_startup/core/enums/store_type.dart';
-import 'package:arjan_startup/features/restaurant/presentation/bloc/restaurant_bloc.dart';
+
 import 'package:arjan_startup/features/restaurant/data/models/menu_item_dto.dart';
 import 'package:arjan_startup/features/restaurant/data/models/restaurant_info_dto.dart';
 import 'package:arjan_startup/features/restaurant/data/models/search_category_item_dto.dart';
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:arjan_startup/features/restaurant/presentation/pages/item_details_page.dart';
 import 'package:arjan_startup/features/restaurant/presentation/pages/merchant_about_page.dart';
+import 'package:arjan_startup/features/restaurant/presentation/pages/merchant_reviews_page.dart';
+
 import 'package:arjan_startup/features/restaurant/domain/repositories/restaurant_repository.dart';
 
 class MerchantMenuPage extends StatelessWidget {
@@ -43,6 +47,27 @@ class MerchantMenuPage extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
           actions: [
+            FavoriteButton(
+              merchantId: merchantId,
+              lat: 30.5882768,
+              lng: 50.2575974,
+            ),
+            IconButton(
+              icon: const Icon(Icons.reviews_outlined),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MerchantReviewsPage(
+                      merchantId: merchantId,
+                      lat: 30.5882768,
+                      lng: 50.2575974,
+                    ),
+                  ),
+                );
+              },
+              tooltip: 'نظرات کاربران',
+            ),
             IconButton(
               icon: const Icon(Icons.info_outline),
               onPressed: () {

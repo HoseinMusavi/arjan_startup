@@ -32,7 +32,7 @@ import '../../features/profile/presentation/bloc/profile_bloc.dart';
 import '../../features/restaurant/data/datasources/restaurant_remote_source.dart';
 import '../../features/restaurant/data/repositories/restaurant_repository_impl.dart';
 import '../../features/restaurant/domain/repositories/restaurant_repository.dart';
-import '../../features/restaurant/presentation/bloc/restaurant_bloc.dart';
+import '../../features/restaurant/presentation/bloc/restaurant/restaurant_bloc.dart';
 
 // Cart Feature
 import '../../features/cart/data/datasources/cart_remote_source.dart';

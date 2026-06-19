@@ -7,6 +7,7 @@ import '../models/menu_item_dto.dart';
 import '../models/item_details_dto.dart';
 import '../models/search_category_item_dto.dart';
 import '../models/merchant_about_dto.dart';
+import '../models/review_dto.dart';
 
 abstract class RestaurantRemoteDataSource {
   Future<RestaurantInfoDto?> getRestaurantInfo(String merchantId, double lat, double lng);
@@ -20,6 +21,16 @@ abstract class RestaurantRemoteDataSource {
     required double lng,
   });
   Future<MerchantAboutDto> getMerchantAbout({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  });
+  Future<ReviewListResponseDto> getReviews({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  });
+  Future<Map<String, dynamic>> toggleFavorite({
     required String merchantId,
     required double lat,
     required double lng,
@@ -188,7 +199,7 @@ class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
       return about;
     } catch (e, stack) {
       log('❌ [API] خطا در دریافت اطلاعات درباره رستوران: $e\n$stack');
-      return const MerchantAboutDto(
+      return MerchantAboutDto(
         code: 0,
         msg: 'خطا در ارتباط با سرور',
         data: MerchantAboutDataDto(
@@ -201,15 +212,84 @@ class RestaurantRemoteDataSourceImpl implements RestaurantRemoteDataSource {
           longitude: '',
           merchantTableBooking: '',
           cuisine: '',
-          rating: RatingDto(ratings: 0, votes: 0),
+          rating: const RatingDto(ratings: 0, votes: 0),
           reviewCount: '0 نظر',
-          opening: [],
-          payment: [],
+          opening: const [],
+          payment: const [],
           information: '',
           website: '',
           services: '',
         ),
       );
+    }
+  }
+
+  @override
+  Future<ReviewListResponseDto> getReviews({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final params = {
+        'merchant_id': merchantId,
+        'device_id': _sessionService.deviceId,
+        'device_platform': 'android',
+        'device_uiid': _sessionService.deviceUiid,
+        'code_version': '1.5',
+        'user_token': _sessionService.userToken,
+        'lang': 'ir',
+        'lat': lat,
+        'lng': lng,
+        'current_page': 'reviews',
+      };
+      log('📝 [API] دریافت نظرات فروشگاه: $merchantId');
+      final response = await _dioClient.get('/ReviewList', queryParameters: params);
+      final result = ReviewListResponseDto.fromJson(response.data);
+      log('✅ [API] تعداد نظرات: ${result.reviews.length}');
+      return result;
+    } catch (e, stack) {
+      log('❌ [API] خطا در دریافت نظرات: $e\n$stack');
+      return ReviewListResponseDto(code: 0, msg: 'خطا در ارتباط با سرور', reviews: []);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> toggleFavorite({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final params = {
+        'merchant_id': merchantId,
+        'device_id': _sessionService.deviceId,
+        'device_platform': 'android',
+        'device_uiid': _sessionService.deviceUiid,
+        'code_version': '1.5',
+        'user_token': _sessionService.userToken,
+        'lang': 'ir',
+        'lat': lat,
+        'lng': lng,
+        'current_page': 'restaurant_page',
+      };
+      log('❤️ [API] تغییر وضعیت علاقه‌مندی فروشگاه: $merchantId');
+      final response = await _dioClient.get('/AddFavorite', queryParameters: params);
+      final data = response.data;
+      final added = data['details']?['added'] as bool? ?? false;
+      log('✅ [API] وضعیت علاقه‌مندی: ${added ? 'افزوده شد' : 'حذف شد'}');
+      return {
+        'success': data['code'] == 1,
+        'added': added,
+        'message': data['msg'] ?? '',
+      };
+    } catch (e, stack) {
+      log('❌ [API] خطا در تغییر علاقه‌مندی: $e\n$stack');
+      return {
+        'success': false,
+        'added': false,
+        'message': 'خطا در ارتباط با سرور',
+      };
     }
   }
 }
