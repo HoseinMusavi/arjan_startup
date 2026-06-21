@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:label="arjanstartup"
+        android:label="ارجان اپ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config">
@@ -24,13 +24,11 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
               
-            <!-- intent-filter برای لانچر اپلیکیشن -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             
-            <!-- ✅ اضافه شد: intent-filter برای باز کردن لینک‌های https و http -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -46,7 +44,6 @@
     </application>
 
     <queries>
-        <!-- ✅ اضافه شد: برای باز کردن لینک در مرورگر -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

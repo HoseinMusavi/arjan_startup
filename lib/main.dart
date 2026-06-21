@@ -11,7 +11,6 @@ void main() async {
   await setupServiceLocator();
   await getIt<SessionService>().initDeviceId();
 
-  // همگام‌سازی توکن موجود از SharedPreferences به SessionService
   final prefs = await SharedPreferences.getInstance();
   final existingToken = prefs.getString('client_token') ?? prefs.getString('user_token');
   if (existingToken != null && existingToken.isNotEmpty) {
@@ -28,7 +27,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Arjan Startup',
+      title: 'ارجان اپ',   // ✅ تغییر نام
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: AppRouter.router,
