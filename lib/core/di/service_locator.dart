@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -51,20 +51,28 @@ final getIt = GetIt.instance;
 Future<void> setupServiceLocator() async {
   debugPrint('🔧 [DI] راه‌اندازی سرویس‌لوکیتور...');
 
+  // ==================== SharedPreferences ====================
   final sharedPreferences = await SharedPreferences.getInstance();
-  getIt.registerLazySingleton(() => sharedPreferences);
+  getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
   debugPrint('✅ [DI] SharedPreferences ثبت شد');
 
-  // Session Service
-  getIt.registerLazySingleton<SessionService>(() => SessionService(getIt<SharedPreferences>()));
+  // ==================== Session Service ====================
+  getIt.registerLazySingleton<SessionService>(
+    () => SessionService(getIt<SharedPreferences>()),
+  );
   debugPrint('✅ [DI] SessionService ثبت شد');
 
+  // ==================== Dio Client ====================
   getIt.registerLazySingleton<DioClient>(() => DioClient());
   debugPrint('✅ [DI] DioClient ثبت شد');
 
   // ==================== Splash Feature ====================
-  getIt.registerLazySingleton<ConfigRepository>(() => ConfigRepositoryImpl(getIt<DioClient>()));
-  getIt.registerFactory<SplashBloc>(() => SplashBloc(getIt<ConfigRepository>()));
+  getIt.registerLazySingleton<ConfigRepository>(
+    () => ConfigRepositoryImpl(getIt<DioClient>()),
+  );
+  getIt.registerFactory<SplashBloc>(
+    () => SplashBloc(getIt<ConfigRepository>()),
+  );
   debugPrint('✅ [DI] Splash Feature ثبت شد');
 
   // ==================== Auth Feature ====================
@@ -72,40 +80,59 @@ Future<void> setupServiceLocator() async {
     () => AuthRemoteDataSourceImpl(getIt<DioClient>()),
   );
   getIt.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(getIt<AuthRemoteDataSource>(), getIt<SharedPreferences>()),
+    () => AuthRepositoryImpl(
+      getIt<AuthRemoteDataSource>(),
+      getIt<SharedPreferences>(),
+    ),
   );
-  getIt.registerFactory<AuthBloc>(() => AuthBloc(getIt<AuthRepository>()));
+  getIt.registerFactory<AuthBloc>(
+    () => AuthBloc(getIt<AuthRepository>()),
+  );
   debugPrint('✅ [DI] Auth Feature ثبت شد');
 
   // ==================== Home Feature ====================
   getIt.registerLazySingleton<HomeRemoteDataSource>(
-    () => HomeRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
+    () => HomeRemoteDataSourceImpl(
+      getIt<DioClient>(),
+      getIt<SessionService>(),
+    ),
   );
   getIt.registerLazySingleton<HomeRepository>(
     () => HomeRepositoryImpl(getIt<HomeRemoteDataSource>()),
   );
-  getIt.registerFactory<HomeBloc>(() => HomeBloc(getIt<HomeRepository>()));
+  getIt.registerFactory<HomeBloc>(
+    () => HomeBloc(getIt<HomeRepository>()),
+  );
   debugPrint('✅ [DI] Home Feature ثبت شد');
 
   // ==================== Profile Feature ====================
-  // 🔥 تغییر مهم: به جای SharedPreferences، از SessionService استفاده می‌کنیم
   getIt.registerLazySingleton<ProfileRemoteDataSource>(
-    () => ProfileRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
+    () => ProfileRemoteDataSourceImpl(
+      getIt<DioClient>(),
+      getIt<SessionService>(),
+    ),
   );
   getIt.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(getIt<ProfileRemoteDataSource>()),
   );
-  getIt.registerFactory<ProfileBloc>(() => ProfileBloc(getIt<ProfileRepository>()));
+  getIt.registerFactory<ProfileBloc>(
+    () => ProfileBloc(getIt<ProfileRepository>()),
+  );
   debugPrint('✅ [DI] Profile Feature ثبت شد');
 
   // ==================== Restaurant Feature ====================
   getIt.registerLazySingleton<RestaurantRemoteDataSource>(
-    () => RestaurantRemoteDataSourceImpl(getIt<DioClient>(), getIt<SessionService>()),
+    () => RestaurantRemoteDataSourceImpl(
+      getIt<DioClient>(),
+      getIt<SessionService>(),
+    ),
   );
   getIt.registerLazySingleton<RestaurantRepository>(
     () => RestaurantRepositoryImpl(getIt<RestaurantRemoteDataSource>()),
   );
-  getIt.registerFactory<RestaurantBloc>(() => RestaurantBloc(getIt<RestaurantRepository>()));
+  getIt.registerFactory<RestaurantBloc>(
+    () => RestaurantBloc(getIt<RestaurantRepository>()),
+  );
   debugPrint('✅ [DI] Restaurant Feature ثبت شد');
 
   // ==================== Cart Feature ====================
@@ -115,7 +142,9 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton<CartRepository>(
     () => CartRepositoryImpl(getIt<CartRemoteDataSource>()),
   );
-  getIt.registerLazySingleton<CartBloc>(() => CartBloc(getIt<CartRepository>()));
+  getIt.registerLazySingleton<CartBloc>(
+    () => CartBloc(getIt<CartRepository>()),
+  );
   debugPrint('✅ [DI] Cart Feature ثبت شد');
 
   // ==================== Order Feature ====================
@@ -125,8 +154,11 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton<OrderRepository>(
     () => OrderRepositoryImpl(getIt<OrderRemoteDataSource>()),
   );
-  getIt.registerFactory<OrderBloc>(() => OrderBloc(getIt<OrderRepository>()));
+  getIt.registerFactory<OrderBloc>(
+    () => OrderBloc(getIt<OrderRepository>()),
+  );
   debugPrint('✅ [DI] Order Feature ثبت شد');
 
-  debugPrint('🔧 [DI] سرویس‌لوکیتور با موفقیت راه‌اندازی شد');
+  debugPrint('✅ [DI] تمام سرویس‌ها با موفقیت ثبت شدند');
+  debugPrint('🔧 [DI] سرویس‌لوکیتور راه‌اندازی شد');
 }

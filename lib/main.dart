@@ -2,9 +2,11 @@ import 'package:arjan_startup/core/services/session_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/service_locator.dart';
 import 'config/theme/app_theme.dart';
 import 'config/routes/app_router.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,21 +28,28 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'ارجان اپ',   // ✅ تغییر نام
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      routerConfig: AppRouter.router,
-      locale: const Locale('fa', 'IR'),
-      supportedLocales: const [
-        Locale('fa', 'IR'),
-        Locale('en', 'US'),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (context) => getIt<AuthBloc>(),
+        ),
       ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      child: MaterialApp.router(
+        title: 'ارجان اپ',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        routerConfig: AppRouter.router,
+        locale: const Locale('fa', 'IR'),
+        supportedLocales: const [
+          Locale('fa', 'IR'),
+          Locale('en', 'US'),
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
     );
   }
 }

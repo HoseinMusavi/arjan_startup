@@ -19,32 +19,61 @@ import '../../features/profile/presentation/pages/addresses_page.dart';
 import '../../features/profile/presentation/pages/add_edit_address_page.dart';
 import '../../features/profile/presentation/pages/notifications_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
+import '../../features/cart/presentation/pages/cart_page.dart';
 
 class AppRouter {
-  static final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> _shellNavigatorHomeKey = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
-  static final GlobalKey<NavigatorState> _shellNavigatorSupermarketKey = GlobalKey<NavigatorState>(debugLabel: 'shellSupermarket');
-  static final GlobalKey<NavigatorState> _shellNavigatorOrdersKey = GlobalKey<NavigatorState>(debugLabel: 'shellOrders');
-  static final GlobalKey<NavigatorState> _shellNavigatorProfileKey = GlobalKey<NavigatorState>(debugLabel: 'shellProfile');
+  static final GlobalKey<NavigatorState> _rootNavigatorKey = 
+      GlobalKey<NavigatorState>(debugLabel: 'root');
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/splash',
     debugLogDiagnostics: true,
     
     redirect: (BuildContext context, GoRouterState state) {
       final prefs = getIt<SharedPreferences>();
-      final bool isLoggedIn = prefs.containsKey('client_token');
-      final String location = state.uri.toString();
-      final bool isLoggingIn = location == '/login';
-      final bool isSigningUp = location == '/signup';
-      final bool isSplash = location == '/';
+      final String? token = prefs.getString('client_token');
+      final bool isLoggedIn = token != null && token.isNotEmpty;
+      
+      final String location = state.matchedLocation;
+      
+      debugPrint('📍 [ROUTER] مسیر: $location');
+      debugPrint('🔐 [ROUTER] وضعیت لاگین: $isLoggedIn');
+      
+      // مسیرهای عمومی (نیاز به لاگین ندارند)
+      final bool isPublicRoute = location == '/' || 
+                                  location == '/splash' ||
+                                  location == '/login' || 
+                                  location == '/signup';
+      
+      // مسیرهای محافظت شده (نیاز به لاگین دارند)
+      final bool isProtectedRoute = location.startsWith('/home') || 
+                                    location.startsWith('/profile') ||
+                                    location.startsWith('/orders') ||
+                                    location.startsWith('/supermarket') ||
+                                    location.startsWith('/cart');
 
-      if (!isLoggedIn && !isLoggingIn && !isSigningUp && !isSplash) {
+      // اگر لاگین نیست و به مسیر محافظت شده می‌رود → برو لاگین
+      if (!isLoggedIn && isProtectedRoute) {
+        debugPrint('⛔ [ROUTER] کاربر لاگین نیست → هدایت به لاگین');
         return '/login';
       }
 
-      if (isLoggedIn && (isLoggingIn || isSplash)) {
+      // اگر لاگین است و به مسیر عمومی می‌رود → برو خانه
+      if (isLoggedIn && isPublicRoute) {
+        debugPrint('✅ [ROUTER] کاربر لاگین است → هدایت به خانه');
+        return '/home';
+      }
+
+      // اگر در splash هستیم و لاگین نیستیم → برو لاگین
+      if (location == '/splash' && !isLoggedIn) {
+        debugPrint('⏳ [ROUTER] اسپلش → هدایت به لاگین');
+        return '/login';
+      }
+
+      // اگر در splash هستیم و لاگین هستیم → برو خانه
+      if (location == '/splash' && isLoggedIn) {
+        debugPrint('⏳ [ROUTER] اسپلش → هدایت به خانه');
         return '/home';
       }
 
@@ -52,8 +81,9 @@ class AppRouter {
     },
 
     routes: [
+      // ============ مسیرهای عمومی ============
       GoRoute(
-        path: '/',
+        path: '/splash',
         name: 'splash',
         builder: (context, state) => const SplashPage(),
       ),
@@ -71,6 +101,15 @@ class AppRouter {
         },
       ),
 
+      // ============ مسیرهای محافظت شده ============
+      // سبد خرید (Full Screen)
+      GoRoute(
+        path: '/cart',
+        name: 'cart',
+        builder: (context, state) => const CartPage(),
+      ),
+
+      // ============ Shell Route با تب‌ها ============
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return ChangeNotifierProvider(
@@ -79,9 +118,8 @@ class AppRouter {
           );
         },
         branches: [
-          // تب ۰: رستوران‌ها
+          // ✅ تب ۰: خانه (رستوران‌ها)
           StatefulShellBranch(
-            navigatorKey: _shellNavigatorHomeKey,
             routes: [
               GoRoute(
                 path: '/home',
@@ -91,9 +129,8 @@ class AppRouter {
             ],
           ),
           
-          // تب ۱: سوپرمارکت (همون صفحه خانه ولی با فیلتر)
+          // ✅ تب ۱: سوپرمارکت
           StatefulShellBranch(
-            navigatorKey: _shellNavigatorSupermarketKey,
             routes: [
               GoRoute(
                 path: '/supermarket',
@@ -103,9 +140,8 @@ class AppRouter {
             ],
           ),
 
-          // تب ۲: سفارشات
+          // ✅ تب ۲: سفارشات
           StatefulShellBranch(
-            navigatorKey: _shellNavigatorOrdersKey,
             routes: [
               GoRoute(
                 path: '/orders',
@@ -115,9 +151,8 @@ class AppRouter {
             ],
           ),
 
-          // تب ۳: پروفایل ✅ با تمام مسیرهای زیرمجموعه
+          // ✅ تب ۳: پروفایل
           StatefulShellBranch(
-            navigatorKey: _shellNavigatorProfileKey,
             routes: [
               // صفحه اصلی پروفایل
               GoRoute(
@@ -125,52 +160,146 @@ class AppRouter {
                 name: 'profile',
                 builder: (context, state) => const ProfilePage(),
               ),
-              // ویرایش اطلاعات
-              GoRoute(
-                path: '/profile/edit',
-                name: 'edit-profile',
-                builder: (context, state) => const EditProfilePage(),
-              ),
-              // تغییر رمز عبور
-              GoRoute(
-                path: '/profile/change-password',
-                name: 'change-password',
-                builder: (context, state) => const ChangePasswordPage(),
-              ),
-              // کیف پول - خلاصه
-              GoRoute(
-                path: '/profile/points',
-                name: 'points',
-                builder: (context, state) => const PointsPage(),
-              ),
-              // کیف پول - جزئیات (با پارامتر pointType)
-              GoRoute(
-                path: '/profile/points/details',
-                name: 'points-details',
-                builder: (context, state) => const PointDetailsPage(),
-              ),
-              // آدرس‌ها - لیست
-              GoRoute(
-                path: '/profile/addresses',
-                name: 'addresses',
-                builder: (context, state) => const AddressesPage(),
-              ),
-              // آدرس‌ها - افزودن جدید
-              GoRoute(
-                path: '/profile/addresses/add',
-                name: 'add-address',
-                builder: (context, state) => const AddEditAddressPage(),
-              ),
-              // اعلان‌ها
-              GoRoute(
-                path: '/profile/notifications',
-                name: 'notifications',
-                builder: (context, state) => const NotificationsPage(),
-              ),
             ],
           ),
         ],
       ),
+      
+      // ============ مسیرهای زیرمجموعه پروفایل (خارج از Shell) ============
+      GoRoute(
+        path: '/profile/edit',
+        name: 'edit-profile',
+        builder: (context, state) => const EditProfilePage(),
+      ),
+      GoRoute(
+        path: '/profile/change-password',
+        name: 'change-password',
+        builder: (context, state) => const ChangePasswordPage(),
+      ),
+      GoRoute(
+        path: '/profile/points',
+        name: 'points',
+        builder: (context, state) => const PointsPage(),
+      ),
+      GoRoute(
+        path: '/profile/points/details',
+        name: 'points-details',
+        builder: (context, state) => const PointDetailsPage(),
+      ),
+      GoRoute(
+        path: '/profile/addresses',
+        name: 'addresses',
+        builder: (context, state) => const AddressesPage(),
+      ),
+      GoRoute(
+        path: '/profile/addresses/add',
+        name: 'add-address',
+        builder: (context, state) => const AddEditAddressPage(),
+      ),
+      GoRoute(
+        path: '/profile/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
+      ),
     ],
+    
+    // ============ صفحه خطا ============
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'صفحه مورد نظر یافت نشد',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              state.uri.toString(),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go('/home'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7A00),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
+              child: const Text(
+                'بازگشت به خانه',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
+
+  // ============ متدهای کمکی برای نویگیشن ============
+  
+  static void goTo(String location, {Object? extra}) {
+    router.go(location, extra: extra);
+  }
+
+  static void pushTo(String location, {Object? extra}) {
+    router.push(location, extra: extra);
+  }
+
+  static void pop<T extends Object?>([T? result]) {
+    // ✅ بررسی می‌کنیم که آیا صفحه قبلی در استک وجود دارد یا خیر
+    try {
+      if (router.canPop()) {
+        router.pop(result);
+      } else {
+        // اگر چیزی برای pop وجود نداشت، به لاگین برگردیم
+        router.go('/login');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ROUTER] خطا در pop: $e');
+      router.go('/login');
+    }
+  }
+
+  static void goHome() {
+    router.go('/home');
+  }
+
+  static void goToLogin() {
+    router.go('/login');
+  }
+
+  static void goToSignup({String? mobile}) {
+    router.go('/signup', extra: mobile);
+  }
+
+  static void logoutAndGoToLogin() {
+    final prefs = getIt<SharedPreferences>();
+    prefs.remove('client_token');
+    prefs.remove('user_token');
+    prefs.remove('user_first_name');
+    prefs.remove('user_last_name');
+    prefs.remove('user_phone');
+    
+    router.go('/login');
+  }
 }

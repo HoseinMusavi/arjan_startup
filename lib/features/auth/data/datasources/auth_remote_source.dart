@@ -1,17 +1,23 @@
 import 'package:flutter/foundation.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/user_dto.dart';
 
 abstract class AuthRemoteDataSource {
   Future<String> requestOtp(String mobile);
   Future<UserDto> verifyOtp(String mobile, String otp, String token);
-  Future<UserDto> createAccount({
+  Future<Map<String, dynamic>> createAccount({
     required String firstName,
     required String lastName,
     required String mobile,
     required double lat,
     required double lng,
+  });
+  Future<UserDto> verifyAccount({
+    required String mobile,
+    required String otp,
+    required String customerToken,
   });
 }
 
@@ -125,9 +131,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
   }
 
-  // ✅ اضافه شده: ثبت‌نام کاربر جدید
   @override
-  Future<UserDto> createAccount({
+  Future<Map<String, dynamic>> createAccount({
     required String firstName,
     required String lastName,
     required String mobile,
@@ -140,7 +145,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await _client.post(
         "/createAccount",
         data: {
-          "next_step": "map_select_location",
           "first_name": firstName,
           "last_name": lastName,
           "contact_phone": mobile,
@@ -149,11 +153,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           "device_platform": "android",
           "device_uiid": "uiid_01234561",
           "code_version": "1.5",
-          "api_key": "OOMW8CGDJJDRW3NBSABe3K26F7HQ75VGN",
+          "api_key": AppConstants.apiKey,
           "lang": "ir",
           "lat": lat.toString(),
           "lng": lng.toString(),
-          "current_page": "create_account",
+          "step": "finalize",
+          "auto_activate": "1",
         },
       );
 
@@ -163,9 +168,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final msg = response.data['msg'] ?? '';
 
       if (code == 1) {
-        debugPrint("✅ [API] ثبت‌نام موفق - در حال پارس کردن UserDto");
-        final userData = UserDto.fromJson(response.data);
-        return userData;
+        debugPrint("✅ [API] ثبت‌نام اولیه موفق");
+        
+        final details = response.data['details'] ?? {};
+        final customerToken = details['customer_token'] ?? '';
+        final contactPhone = details['contact_phone'] ?? mobile;
+        
+        debugPrint("📱 [API] customer_token: $customerToken");
+        debugPrint("📱 [API] contact_phone: $contactPhone");
+        
+        return {
+          'customer_token': customerToken,
+          'contact_phone': contactPhone,
+          'message': msg,
+          'raw_response': response.data,
+        };
       } else {
         debugPrint("❌ [API] خطا در ثبت‌نام: $msg (code: $code)");
         throw ServerException(
@@ -175,6 +192,80 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
     } catch (e) {
       debugPrint("❌ [API] خطای غیرمنتظره در createAccount: $e");
+      if (e is ServerException) rethrow;
+      throw ServerException(message: "خطا در برقراری ارتباط با سرور", code: 0);
+    }
+  }
+
+  @override
+  Future<UserDto> verifyAccount({
+    required String mobile,
+    required String otp,
+    required String customerToken,
+  }) async {
+    try {
+      debugPrint("🔐 [API] تایید ثبت‌نام برای شماره: $mobile");
+      debugPrint("   - customer_token: $customerToken");
+      debugPrint("   - otp: $otp");
+
+      // ✅ استفاده از متد صحیح verifyCode مطابق با کنترلر PHP
+      debugPrint("📡 [API] ارسال درخواست به verifyCode...");
+      
+      final response = await _client.get(
+        "/verifyCode",
+        queryParameters: {
+          "verification_type": "verification_mobile",
+          "customer_token": customerToken,
+          "code": otp,
+          "device_platform": "android",
+          "lang": "ir",
+          "api_key": AppConstants.apiKey,
+        },
+      );
+
+      debugPrint("📡 [API] پاسخ verifyCode: ${response.data}");
+      
+      final code = response.data['code'];
+      final msg = response.data['msg'] ?? '';
+
+      if (code == 1) {
+        debugPrint("✅ [API] تایید ثبت‌نام با verifyCode موفق");
+        
+        // دریافت توکن جدید از پاسخ
+        final details = response.data['details'] ?? {};
+        final newToken = details['token'] ?? '';
+        
+        if (newToken.isEmpty) {
+          debugPrint("⚠️ [API] توکن در پاسخ وجود ندارد!");
+          throw ServerException(
+            message: "پاسخ سرور ناقص است",
+            code: code,
+          );
+        }
+        
+        debugPrint("🔑 [API] توکن جدید: ${newToken.substring(0, newToken.length > 10 ? 10 : newToken.length)}...");
+        
+        // ساخت UserDto با توکن جدید
+        final userData = UserDto(
+          token: newToken,
+          firstName: '', // اطلاعات کامل از API بعدی دریافت میشه
+          lastName: '',
+          phone: mobile,
+        );
+        
+        debugPrint("✅ [API] UserDto ساخته شد: token=${userData.token.substring(0, userData.token.length > 10 ? 10 : userData.token.length)}...");
+        return userData;
+        
+      } else {
+        debugPrint("❌ [API] خطا در تایید ثبت‌نام: $msg (code: $code)");
+        throw ServerException(
+          message: msg,
+          code: code,
+        );
+      }
+      
+    } catch (e) {
+      debugPrint("❌ [API] خطای غیرمنتظره در verifyAccount: $e");
       if (e is ServerException) rethrow;
       throw ServerException(message: "خطا در برقراری ارتباط با سرور", code: 0);
     }

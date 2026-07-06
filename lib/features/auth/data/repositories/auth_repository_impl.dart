@@ -46,11 +46,13 @@ class AuthRepositoryImpl implements AuthRepository {
       debugPrint("📝 [REPO] دریافت اطلاعات کاربر: token=${user.token.substring(0, user.token.length > 10 ? 10 : user.token.length)}..., name=${user.firstName}");
       
       if (user.token.isNotEmpty && user.token != 'null') {
-        // ذخیره در SharedPreferences (کلید قدیمی)
         await _prefs.setString('client_token', user.token);
-        // ذخیره در SessionService
         await _sessionService.setUserToken(user.token);
         debugPrint("✅ [REPO] توکن در SharedPreferences و SessionService ذخیره شد");
+        
+        await _prefs.setString('user_first_name', user.firstName);
+        await _prefs.setString('user_last_name', user.lastName);
+        await _prefs.setString('user_phone', user.phone);
       } else {
         debugPrint("⚠️ [REPO] توکن خالی یا نامعتبر است!");
       }
@@ -66,7 +68,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> createAccount({
+  Future<Either<Failure, Map<String, dynamic>>> createAccount({
     required String firstName,
     required String lastName,
     required String mobile,
@@ -74,8 +76,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required double lng,
   }) async {
     debugPrint("📝 [REPO] درخواست ثبت‌نام کاربر: $firstName $lastName, شماره: $mobile");
+    
     try {
-      final user = await _remoteDataSource.createAccount(
+      final result = await _remoteDataSource.createAccount(
         firstName: firstName,
         lastName: lastName,
         mobile: mobile,
@@ -83,21 +86,86 @@ class AuthRepositoryImpl implements AuthRepository {
         lng: lng,
       );
       
-      debugPrint("📝 [REPO] ثبت‌نام موفق - کاربر: ${user.firstName}");
+      debugPrint("✅ [REPO] ثبت‌نام اولیه موفق");
+      debugPrint("📱 [REPO] customer_token: ${result['customer_token']}");
+      
+      return Right(result);
+      
+    } on ServerException catch (e) {
+      debugPrint("❌ [REPO] خطای سرور در createAccount: ${e.message} (code: ${e.code})");
+      
+      if (e.message.contains('تکرار') || e.message.contains('duplicate')) {
+        return Left(ServerFailure("این شماره موبایل قبلاً ثبت نام کرده است"));
+      }
+      
+      return Left(ServerFailure(e.message));
+      
+    } catch (e) {
+      debugPrint("❌ [REPO] خطای غیرمنتظره در createAccount: $e");
+      return Left(ServerFailure("خطا در ثبت‌نام. لطفاً مجدداً تلاش کنید"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> verifyAccount({
+    required String mobile,
+    required String otp,
+    required String customerToken,
+  }) async {
+    debugPrint("🔐 [REPO] تایید ثبت‌نام برای: $mobile");
+    debugPrint("   - customerToken: $customerToken");
+    debugPrint("   - otp: $otp");
+    
+    try {
+      final user = await _remoteDataSource.verifyAccount(
+        mobile: mobile,
+        otp: otp,
+        customerToken: customerToken,
+      );
+      
+      debugPrint("✅ [REPO] تایید ثبت‌نام موفق - کاربر: ${user.firstName} ${user.lastName}");
       
       if (user.token.isNotEmpty && user.token != 'null') {
         await _prefs.setString('client_token', user.token);
+        await _prefs.setString('user_token', user.token);
         await _sessionService.setUserToken(user.token);
         debugPrint("✅ [REPO] توکن در SharedPreferences و SessionService ذخیره شد");
+        
+        await _prefs.setString('user_first_name', user.firstName);
+        await _prefs.setString('user_last_name', user.lastName);
+        await _prefs.setString('user_phone', user.phone);
+        
+        return Right(user);
+      } else {
+        debugPrint("⚠️ [REPO] توکن خالی یا نامعتبر است!");
+        
+        // ✅ اگر توکن وجود نداشت، سعی می‌کنیم کاربر رو با شماره لاگین کنیم
+        debugPrint("📱 [REPO] تلاش برای ورود خودکار با شماره...");
+        
+        // درخواست OTP جدید برای لاگین
+        final otpResult = await requestOtp(mobile);
+        if (otpResult.isRight()) {
+          // اینجا باید کاربر رو به صفحه تایید OTP هدایت کنیم
+          // ولی چون ما در flow ثبت‌نام هستیم، این منطق پیچیده میشه
+          // بهتره پیام بدیم که کد تایید ارسال شده رو وارد کنه
+          return Left(ServerFailure("لطفاً با کد تایید ارسال شده وارد شوید"));
+        }
+        
+        return Left(ServerFailure("توکن دریافتی نامعتبر است"));
       }
       
-      return Right(user);
     } on ServerException catch (e) {
-      debugPrint("❌ [REPO] خطای سرور در createAccount: ${e.message} (code: ${e.code})");
+      debugPrint("❌ [REPO] خطای سرور در verifyAccount: ${e.message} (code: ${e.code})");
+      
+      // اگر خطا مربوط به عدم تایید بود
+      if (e.message.contains('تایید') || e.message.contains('فعال')) {
+        return Left(ServerFailure("حساب کاربری شما نیاز به تایید دارد. لطفاً به پنل ادمین مراجعه کنید"));
+      }
+      
       return Left(ServerFailure(e.message));
     } catch (e) {
-      debugPrint("❌ [REPO] خطای غیرمنتظره در createAccount: $e");
-      return Left(ServerFailure("خطا در ثبت‌نام"));
+      debugPrint("❌ [REPO] خطای غیرمنتظره در verifyAccount: $e");
+      return Left(ServerFailure("خطا در تایید ثبت‌نام"));
     }
   }
 
@@ -106,6 +174,9 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _prefs.remove('client_token');
       await _prefs.remove('user_token');
+      await _prefs.remove('user_first_name');
+      await _prefs.remove('user_last_name');
+      await _prefs.remove('user_phone');
       debugPrint("✅ [REPO] خروج از حساب - توکن حذف شد");
       return const Right(null);
     } catch (e) {

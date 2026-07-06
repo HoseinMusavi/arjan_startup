@@ -27,7 +27,6 @@ class VerifyOtpRequested extends AuthEvent {
   List<Object> get props => [mobile, otp, token];
 }
 
-// ✅ اضافه شده: رویداد ثبت‌نام
 class CreateAccountRequested extends AuthEvent {
   final String firstName;
   final String lastName;
@@ -44,6 +43,21 @@ class CreateAccountRequested extends AuthEvent {
   });
   @override
   List<Object> get props => [firstName, lastName, mobile, lat, lng];
+}
+
+// ✅ رویداد جدید برای تایید ثبت‌نام با کد
+class VerifyAccountRequested extends AuthEvent {
+  final String mobile;
+  final String otp;
+  final String customerToken;
+  
+  const VerifyAccountRequested({
+    required this.mobile,
+    required this.otp,
+    required this.customerToken,
+  });
+  @override
+  List<Object> get props => [mobile, otp, customerToken];
 }
 
 class AuthLogout extends AuthEvent {}
