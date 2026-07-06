@@ -138,26 +138,12 @@ class AuthRepositoryImpl implements AuthRepository {
         return Right(user);
       } else {
         debugPrint("⚠️ [REPO] توکن خالی یا نامعتبر است!");
-        
-        // ✅ اگر توکن وجود نداشت، سعی می‌کنیم کاربر رو با شماره لاگین کنیم
-        debugPrint("📱 [REPO] تلاش برای ورود خودکار با شماره...");
-        
-        // درخواست OTP جدید برای لاگین
-        final otpResult = await requestOtp(mobile);
-        if (otpResult.isRight()) {
-          // اینجا باید کاربر رو به صفحه تایید OTP هدایت کنیم
-          // ولی چون ما در flow ثبت‌نام هستیم، این منطق پیچیده میشه
-          // بهتره پیام بدیم که کد تایید ارسال شده رو وارد کنه
-          return Left(ServerFailure("لطفاً با کد تایید ارسال شده وارد شوید"));
-        }
-        
         return Left(ServerFailure("توکن دریافتی نامعتبر است"));
       }
       
     } on ServerException catch (e) {
       debugPrint("❌ [REPO] خطای سرور در verifyAccount: ${e.message} (code: ${e.code})");
       
-      // اگر خطا مربوط به عدم تایید بود
       if (e.message.contains('تایید') || e.message.contains('فعال')) {
         return Left(ServerFailure("حساب کاربری شما نیاز به تایید دارد. لطفاً به پنل ادمین مراجعه کنید"));
       }
@@ -172,11 +158,13 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> logout() async {
     try {
+      // ✅ فقط توکن‌ها را پاک کن، device_uiid را حفظ کن
       await _prefs.remove('client_token');
       await _prefs.remove('user_token');
       await _prefs.remove('user_first_name');
       await _prefs.remove('user_last_name');
       await _prefs.remove('user_phone');
+      
       debugPrint("✅ [REPO] خروج از حساب - توکن حذف شد");
       return const Right(null);
     } catch (e) {

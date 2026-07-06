@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:arjan_startup/core/network/dio_client.dart';
+import 'package:arjan_startup/core/services/session_service.dart';
 import 'package:flutter/widgets.dart';
 import '../models/cart_models.dart';
 import '../models/cart_details_dto.dart';
@@ -49,21 +50,28 @@ abstract class CartRemoteDataSource {
 
 class CartRemoteDataSourceImpl implements CartRemoteDataSource {
   final DioClient _dioClient;
+  final SessionService _sessionService;
 
-  CartRemoteDataSourceImpl(this._dioClient);
+  CartRemoteDataSourceImpl(this._dioClient, this._sessionService);
 
-  final Map<String, dynamic> _baseParams = {
-    'device_id': 'device_01231',
-    'device_platform': 'android',
-    'device_uiid': 'uiid_01234561',
-    'code_version': '1.5',
-    'user_token': '9htacgzgjangzcv8211689d1f2b470ca46cbb4ba756aa27',
-  };
+  // ✅ متد کمکی برای دریافت پارامترهای پایه با توکن داینامیک
+  Map<String, dynamic> _getBaseParams() {
+    final token = _sessionService.userToken;
+    debugPrint('🔑 [CartAPI] توکن فعلی: ${token.isNotEmpty ? token.substring(0, token.length > 10 ? 10 : token.length) : '(empty)'}...');
+    
+    return {
+      'device_id': _sessionService.deviceId,
+      'device_platform': 'android',
+      'device_uiid': _sessionService.deviceUiid,
+      'code_version': '1.5',
+      'user_token': token,
+    };
+  }
 
   @override
   Future<CartCountDto> getCartCount(String merchantId, double lat, double lng) async {
     try {
-      final data = {'merchant_id': merchantId, 'lat': lat, 'lng': lng, ..._baseParams};
+      final data = {'merchant_id': merchantId, 'lat': lat, 'lng': lng, ..._getBaseParams()};
       final response = await _dioClient.post('/getCartCount/', data: data);
       
       if (response.data['code'] == 1 && response.data['details'] != null) {
@@ -79,7 +87,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
   @override
   Future<AddToCartResponseDto> addToCart(Map<String, dynamic> payload) async {
     try {
-      final data = {...payload, ..._baseParams};
+      final data = {...payload, ..._getBaseParams()};
       final response = await _dioClient.post('/addToCart', data: data);
       
       if (response.data['code'] == 1) {
@@ -98,7 +106,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       final queryParams = {
         'merchant_id': merchantId,
         'transaction_type': 'delivery',
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'cart',
       };
       debugPrint('🗑️ [API] ارسال درخواست clearCart با GET برای merchant_id: $merchantId');
@@ -122,7 +130,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         'lat': lat,
         'lng': lng,
         'current_page': 'cart',
-        ..._baseParams,
+        ..._getBaseParams(),
       };
 
       final response = await _dioClient.get('/loadCart', queryParameters: queryParams);
@@ -166,13 +174,12 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
   }
 
   @override
-    @override
   Future<CartDetailsDto> getFirstCart(double lat, double lng) async {
     try {
       final queryParams = {
         'lat': lat,
         'lng': lng,
-        ..._baseParams,
+        ..._getBaseParams(),
       };
 
       debugPrint('🛒 [API] درخواست getFirstCart با پارامترهای: $queryParams');
@@ -187,8 +194,6 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         
         debugPrint('🛒 [API] getFirstCart: merchant_id=$merchantId, count=$count');
         
-        // ✅ getFirstCart فقط merchant_id و count برمیگردونه
-        // merchantName رو برابر merchant_id قرار میدیم تا CartBloc بتونه تشخیص بده
         return CartDetailsDto(
           merchantName: merchantId.isNotEmpty ? merchantId : '',
           merchantLogo: '',
@@ -229,7 +234,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
   Future<List<AddressDto>> getAddressBookDropDown() async {
     try {
       final queryParams = {
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'address_form_select',
       };
       
@@ -274,7 +279,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         'contact_phone': contactPhone,
         'delivery_instruction': '',
         'merchant_id': merchantId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'address_form',
       };
       
@@ -294,7 +299,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
     try {
       final queryParams = {
         'merchant_id': merchantId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'cart',
       };
       
@@ -317,7 +322,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       final queryParams = {
         'merchant_id': merchantId,
         'delivery_date': deliveryDate,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'cart',
       };
       
@@ -341,7 +346,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         'points': points,
         'merchant_id': merchantId,
         'transaction_type': 'delivery',
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'cart',
       };
       
@@ -369,7 +374,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         'delivery_date': deliveryDate,
         'delivery_time': deliveryTime,
         'merchant_id': merchantId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'cart',
       };
       
@@ -405,7 +410,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         'sms_order_session': 'undefined',
         'delivery_asap': 'false',
         'merchant_id': merchantId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'payment_option',
       };
       
@@ -428,7 +433,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       final queryParams = {
         'transaction_type': 'delivery',
         'merchant_id': merchantId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'payment_option',
         'lat': lat,
         'lng': lng,

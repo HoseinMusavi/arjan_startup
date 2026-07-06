@@ -136,8 +136,12 @@ Future<void> setupServiceLocator() async {
   debugPrint('✅ [DI] Restaurant Feature ثبت شد');
 
   // ==================== Cart Feature ====================
+  // ✅ اصلاح: اضافه کردن SessionService به CartRemoteDataSource
   getIt.registerLazySingleton<CartRemoteDataSource>(
-    () => CartRemoteDataSourceImpl(getIt<DioClient>()),
+    () => CartRemoteDataSourceImpl(
+      getIt<DioClient>(),
+      getIt<SessionService>(), // ✅ اضافه شد
+    ),
   );
   getIt.registerLazySingleton<CartRepository>(
     () => CartRepositoryImpl(getIt<CartRemoteDataSource>()),
