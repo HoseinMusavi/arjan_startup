@@ -148,8 +148,12 @@ Future<void> setupServiceLocator() async {
   debugPrint('✅ [DI] Cart Feature ثبت شد');
 
   // ==================== Order Feature ====================
+  // ✅ اصلاح: اضافه کردن SessionService به OrderRemoteDataSource
   getIt.registerLazySingleton<OrderRemoteDataSource>(
-    () => OrderRemoteDataSourceImpl(getIt<DioClient>()),
+    () => OrderRemoteDataSourceImpl(
+      getIt<DioClient>(),
+      getIt<SessionService>(), // ✅ اضافه شد
+    ),
   );
   getIt.registerLazySingleton<OrderRepository>(
     () => OrderRepositoryImpl(getIt<OrderRemoteDataSource>()),

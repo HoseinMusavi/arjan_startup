@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:arjan_startup/core/network/dio_client.dart';
+import 'package:arjan_startup/core/services/session_service.dart';
 import 'package:flutter/material.dart';
 import '../models/order_models.dart';
 
@@ -13,23 +14,30 @@ abstract class OrderRemoteDataSource {
 
 class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   final DioClient _dioClient;
+  final SessionService _sessionService;
 
-  OrderRemoteDataSourceImpl(this._dioClient);
+  OrderRemoteDataSourceImpl(this._dioClient, this._sessionService);
 
-  final Map<String, dynamic> _baseParams = {
-    'device_id': 'device_01231',
-    'device_platform': 'android',
-    'device_uiid': 'uiid_01234561',
-    'code_version': '1.5',
-    'user_token': '9htacgzgjangzcv8211689d1f2b470ca46cbb4ba756aa27',
-  };
+  // ✅ توکن از SessionService گرفته میشه
+  Map<String, dynamic> _getBaseParams() {
+    final token = _sessionService.userToken;
+    debugPrint('🔑 [OrderAPI] توکن فعلی: ${token.isNotEmpty ? token.substring(0, token.length > 10 ? 10 : token.length) : '(empty)'}...');
+    
+    return {
+      'device_id': _sessionService.deviceId,
+      'device_platform': 'android',
+      'device_uiid': _sessionService.deviceUiid,
+      'code_version': '1.5',
+      'user_token': token,
+    };
+  }
 
   @override
   Future<OrderListResponseDto> getOrderList(String tab, double lat, double lng) async {
     try {
       final queryParams = {
         'tab': tab,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'tabbar',
         'lat': lat,
         'lng': lng,
@@ -51,7 +59,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     try {
       final queryParams = {
         'order_id': orderId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'view_order',
         'lat': lat,
         'lng': lng,
@@ -73,7 +81,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     try {
       final queryParams = {
         'order_id': orderId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'tabbar',
         'lat': lat,
         'lng': lng,
@@ -95,7 +103,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     try {
       final queryParams = {
         'order_id': orderId,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'track_history',
         'lat': lat,
         'lng': lng,
@@ -117,7 +125,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     try {
       final queryParams = {
         'search_str': searchStr,
-        ..._baseParams,
+        ..._getBaseParams(),
         'current_page': 'order_search',
         'lat': lat,
         'lng': lng,
