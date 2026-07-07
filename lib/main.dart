@@ -10,6 +10,8 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ✅ تنظیمات اولیه
   await setupServiceLocator();
   await getIt<SessionService>().initDeviceId();
 

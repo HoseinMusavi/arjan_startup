@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:arjan_startup/core/di/service_locator.dart';
+import 'package:arjan_startup/config/routes/app_router.dart';
 import 'package:arjan_startup/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:arjan_startup/features/cart/data/models/address_model.dart';
 import 'package:arjan_startup/features/cart/data/models/payment_method_model.dart';
-import 'package:arjan_startup/features/cart/presentation/pages/address_picker_page.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String merchantId;
@@ -23,7 +23,11 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   final CartBloc _cartBloc = getIt<CartBloc>();
-  final NumberFormat _currencyFormat = NumberFormat.currency(locale: 'fa_IR', symbol: '', decimalDigits: 0);
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'fa_IR',
+    symbol: '',
+    decimalDigits: 0,
+  );
 
   List<AddressDto> _addresses = [];
   AddressDto? _selectedAddress;
@@ -46,6 +50,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
     _loadInitialData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ✅ وقتی صفحه برگشت داده شد، آدرس‌ها رو دوباره بارگذاری کن
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _addresses.isEmpty) {
+        _loadAddresses();
+      }
+    });
+  }
+
   Future<void> _loadInitialData() async {
     debugPrint('🛒 [CHECKOUT] شروع بارگذاری داده‌ها');
     if (!mounted) return;
@@ -54,19 +69,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _errorMessage = null;
     });
 
+    await _loadAddresses();
+    await _loadDeliveryDates();
+    await _loadPaymentMethods();
+  }
+
+  Future<void> _loadAddresses() async {
+    debugPrint('📍 [CHECKOUT] بارگذاری آدرس‌ها');
     final addressResult = await _cartBloc.getAddressBookDropDown();
-    await addressResult.fold(
+    if (!mounted) return;
+    
+    addressResult.fold(
       (failure) {
         debugPrint('❌ [CHECKOUT] خطا در دریافت آدرس‌ها: ${failure.message}');
-        if (!mounted) return;
         setState(() {
           _errorMessage = failure.message;
           _isLoading = false;
         });
       },
-      (addresses) async {
+      (addresses) {
         debugPrint('✅ [CHECKOUT] ${addresses.length} آدرس دریافت شد');
-        if (!mounted) return;
         setState(() {
           _addresses = addresses;
           if (addresses.isNotEmpty) {
@@ -75,17 +97,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
               orElse: () => addresses.first,
             );
           }
+          _isLoading = false;
         });
-        await _loadDeliveryDates();
-        await _loadPaymentMethods();
       },
     );
   }
 
   Future<void> _loadPaymentMethods() async {
     debugPrint('💳 [CHECKOUT] دریافت روش‌های پرداخت');
-    final result = await _cartBloc.getPaymentList(widget.merchantId, 30.5882768, 50.2575974);
+    final result = await _cartBloc.getPaymentList(
+      widget.merchantId,
+      30.5882768,
+      50.2575974,
+    );
     
+    if (!mounted) return;
     result.fold(
       (failure) {
         debugPrint('❌ [CHECKOUT] خطا در دریافت روش‌های پرداخت: ${failure.message}');
@@ -95,7 +121,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         debugPrint('💳 [CHECKOUT] روش‌های پرداخت: ${methods.map((m) => m.paymentName).join(', ')}');
         setState(() {
           _paymentMethods = methods;
-          // انتخاب پیش‌فرض: درگاه پرداخت (stp) برای تست
           final stpMethod = methods.firstWhere(
             (m) => m.paymentCode == 'stp',
             orElse: () => methods.first,
@@ -110,10 +135,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> _loadDeliveryDates() async {
     debugPrint('🛒 [CHECKOUT] دریافت تاریخ‌های تحویل');
     final dateResult = await _cartBloc.getDeliveryDateList(widget.merchantId);
+    if (!mounted) return;
+    
     dateResult.fold(
       (failure) {
         debugPrint('❌ [CHECKOUT] خطا در دریافت تاریخ‌ها: ${failure.message}');
-        if (!mounted) return;
         setState(() {
           _errorMessage = failure.message;
           _isLoading = false;
@@ -121,7 +147,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       },
       (dates) {
         debugPrint('✅ [CHECKOUT] ${dates.length} تاریخ دریافت شد');
-        if (!mounted) return;
         setState(() {
           _deliveryDates = dates;
           if (dates.isNotEmpty) {
@@ -131,7 +156,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (_selectedDate != null) {
           _loadDeliveryTimes();
         } else {
-          if (!mounted) return;
           setState(() {
             _isLoading = false;
           });
@@ -144,11 +168,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (_selectedDate == null) return;
     
     debugPrint('🛒 [CHECKOUT] دریافت ساعات تحویل برای تاریخ: $_selectedDate');
-    final timeResult = await _cartBloc.getDeliveryTimeList(widget.merchantId, _selectedDate!);
+    final timeResult = await _cartBloc.getDeliveryTimeList(
+      widget.merchantId,
+      _selectedDate!,
+    );
+    if (!mounted) return;
+    
     timeResult.fold(
       (failure) {
         debugPrint('❌ [CHECKOUT] خطا در دریافت ساعات: ${failure.message}');
-        if (!mounted) return;
         setState(() {
           _errorMessage = failure.message;
           _isLoading = false;
@@ -156,7 +184,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       },
       (times) {
         debugPrint('✅ [CHECKOUT] ${times.length} ساعت دریافت شد');
-        if (!mounted) return;
         setState(() {
           _deliveryTimes = times;
           if (times.isNotEmpty) {
@@ -179,10 +206,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
     debugPrint('🛒 [CHECKOUT] اعمال امتیاز کیف پول');
     final result = await _cartBloc.applyRedeemPoints(_userPoints, widget.merchantId);
     if (!mounted) return;
+    
     result.fold(
       (failure) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       },
       (response) {
@@ -192,11 +224,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
             _appliedPoints = _userPoints;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('امتیاز با موفقیت اعمال شد'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('امتیاز با موفقیت اعمال شد'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response.message), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(response.message),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       },
@@ -206,21 +246,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> _submitOrder() async {
     if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لطفاً آدرس تحویل را انتخاب کنید'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text('لطفاً آدرس تحویل را انتخاب کنید'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
 
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لطفاً تاریخ و ساعت تحویل را انتخاب کنید'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text('لطفاً تاریخ و ساعت تحویل را انتخاب کنید'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
 
     if (_selectedPaymentMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لطفاً روش پرداخت را انتخاب کنید'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text('لطفاً روش پرداخت را انتخاب کنید'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -237,15 +289,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
       merchantId: widget.merchantId,
     );
 
+    if (!mounted) return;
     await preCheckoutResult.fold(
       (failure) async {
         debugPrint('❌ [CHECKOUT] خطا در پیش‌تسویه: ${failure.message}');
-        if (!mounted) return;
         setState(() {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       },
       (preCheckoutResponse) async {
@@ -267,7 +323,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
               _isSubmitting = false;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(failure.message), backgroundColor: Colors.red),
+              SnackBar(
+                content: Text(failure.message),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
             );
           },
           (payNowResponse) {
@@ -390,21 +450,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  Future<void> _addNewAddress() async {
-    debugPrint('📍 [CHECKOUT] رفتن به صفحه افزودن آدرس جدید');
-    final result = await Navigator.push<AddressDto>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddressPickerPage(
-          merchantId: widget.merchantId,
-          totalAmount: widget.totalAmount,
-        ),
-      ),
-    );
+  // ✅ اصلاح: رفتن به صفحه مدیریت آدرس پروفایل
+  Future<void> _navigateToAddressManagement() async {
+    debugPrint('📍 [CHECKOUT] رفتن به صفحه مدیریت آدرس‌ها');
     
-    if (result != null && mounted) {
-      debugPrint('✅ [CHECKOUT] آدرس جدید اضافه شد: ${result.locationName}');
-      await _loadInitialData();
+    // رفتن به صفحه آدرس‌های پروفایل
+    final result = await AppRouter.router.push('/profile/addresses');
+    
+    // بعد از برگشت، آدرس‌ها رو دوباره بارگذاری کن
+    if (mounted) {
+      debugPrint('📍 [CHECKOUT] برگشت از صفحه مدیریت آدرس‌ها، بارگذاری مجدد آدرس‌ها');
+      await _loadAddresses();
+      
+      // اگر آدرسی انتخاب شده بود، دوباره به روز کن
+      if (_addresses.isNotEmpty && _selectedAddress == null) {
+        setState(() {
+          _selectedAddress = _addresses.firstWhere(
+            (a) => a.isDefault,
+            orElse: () => _addresses.first,
+          );
+        });
+      }
     }
   }
 
@@ -428,7 +494,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('تسویه حساب', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text(
+          'تسویه حساب',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
@@ -538,7 +611,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // 4. روش پرداخت ✅
+                      // 4. روش پرداخت
                       _buildSectionCard(
                         title: 'روش پرداخت',
                         icon: Icons.payment_outlined,
@@ -703,17 +776,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (_addresses.isEmpty) {
       return Column(
         children: [
-          const Text('آدرسی ثبت نشده است', style: TextStyle(color: Colors.grey)),
+          const Text(
+            'آدرسی ثبت نشده است',
+            style: TextStyle(color: Colors.grey, fontSize: 14),
+          ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
-              onPressed: _addNewAddress,
+            child: OutlinedButton.icon(
+              onPressed: _navigateToAddressManagement,
+              icon: const Icon(Icons.add_location, size: 18),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: primaryColor),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: const Text('افزودن آدرس جدید'),
+              label: const Text(
+                'افزودن آدرس جدید',
+                style: TextStyle(fontSize: 14),
+              ),
             ),
           ),
         ],
@@ -730,7 +811,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
               _selectedAddress = value;
             });
           },
-          title: Text(address.locationName, style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(
+            address.locationName.isNotEmpty ? address.locationName : 'آدرس ${_addresses.indexOf(address) + 1}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           subtitle: Text(
             address.address,
             maxLines: 2,
@@ -739,10 +823,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
           activeColor: primaryColor,
           contentPadding: EdgeInsets.zero,
         )),
+        const SizedBox(height: 8),
         TextButton.icon(
-          onPressed: _addNewAddress,
+          onPressed: _navigateToAddressManagement,
           icon: const Icon(Icons.add_location, size: 18),
-          label: const Text('افزودن آدرس جدید'),
+          label: const Text('مدیریت آدرس‌ها'),
         ),
       ],
     );

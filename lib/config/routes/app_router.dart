@@ -40,40 +40,33 @@ class AppRouter {
       debugPrint('📍 [ROUTER] مسیر: $location');
       debugPrint('🔐 [ROUTER] وضعیت لاگین: $isLoggedIn');
       
-      // مسیرهای عمومی (نیاز به لاگین ندارند)
+      // ✅ اگر در splash هستیم، هیچ redirect انجام نده (اجازه بده اسپلش نمایش داده بشه)
+      if (location == '/splash') {
+        debugPrint('⏳ [ROUTER] در صفحه اسپلش، صبر می‌کنیم...');
+        return null;
+      }
+      
+      // ✅ مسیرهای عمومی (نیاز به لاگین ندارند)
       final bool isPublicRoute = location == '/' || 
-                                  location == '/splash' ||
                                   location == '/login' || 
                                   location == '/signup';
       
-      // مسیرهای محافظت شده (نیاز به لاگین دارند)
+      // ✅ مسیرهای محافظت شده (نیاز به لاگین دارند)
       final bool isProtectedRoute = location.startsWith('/home') || 
                                     location.startsWith('/profile') ||
                                     location.startsWith('/orders') ||
                                     location.startsWith('/supermarket') ||
                                     location.startsWith('/cart');
 
-      // اگر لاگین نیست و به مسیر محافظت شده می‌رود → برو لاگین
+      // ✅ اگر لاگین نیست و به مسیر محافظت شده می‌رود → برو لاگین
       if (!isLoggedIn && isProtectedRoute) {
         debugPrint('⛔ [ROUTER] کاربر لاگین نیست → هدایت به لاگین');
         return '/login';
       }
 
-      // اگر لاگین است و به مسیر عمومی می‌رود → برو خانه
+      // ✅ اگر لاگین است و به مسیر عمومی می‌رود → برو خانه
       if (isLoggedIn && isPublicRoute) {
         debugPrint('✅ [ROUTER] کاربر لاگین است → هدایت به خانه');
-        return '/home';
-      }
-
-      // اگر در splash هستیم و لاگین نیستیم → برو لاگین
-      if (location == '/splash' && !isLoggedIn) {
-        debugPrint('⏳ [ROUTER] اسپلش → هدایت به لاگین');
-        return '/login';
-      }
-
-      // اگر در splash هستیم و لاگین هستیم → برو خانه
-      if (location == '/splash' && isLoggedIn) {
-        debugPrint('⏳ [ROUTER] اسپلش → هدایت به خانه');
         return '/home';
       }
 
@@ -102,7 +95,6 @@ class AppRouter {
       ),
 
       // ============ مسیرهای محافظت شده ============
-      // سبد خرید (Full Screen)
       GoRoute(
         path: '/cart',
         name: 'cart',
@@ -118,7 +110,6 @@ class AppRouter {
           );
         },
         branches: [
-          // ✅ تب ۰: خانه (رستوران‌ها)
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -128,8 +119,6 @@ class AppRouter {
               ),
             ],
           ),
-          
-          // ✅ تب ۱: سوپرمارکت
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -139,8 +128,6 @@ class AppRouter {
               ),
             ],
           ),
-
-          // ✅ تب ۲: سفارشات
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -150,11 +137,8 @@ class AppRouter {
               ),
             ],
           ),
-
-          // ✅ تب ۳: پروفایل
           StatefulShellBranch(
             routes: [
-              // صفحه اصلی پروفایل
               GoRoute(
                 path: '/profile',
                 name: 'profile',
@@ -165,7 +149,6 @@ class AppRouter {
         ],
       ),
       
-      // ============ مسیرهای زیرمجموعه پروفایل (خارج از Shell) ============
       GoRoute(
         path: '/profile/edit',
         name: 'edit-profile',
@@ -203,7 +186,6 @@ class AppRouter {
       ),
     ],
     
-    // ============ صفحه خطا ============
     errorBuilder: (context, state) => Scaffold(
       body: Center(
         child: Column(
@@ -255,8 +237,6 @@ class AppRouter {
     ),
   );
 
-  // ============ متدهای کمکی برای نویگیشن ============
-  
   static void goTo(String location, {Object? extra}) {
     router.go(location, extra: extra);
   }
@@ -266,12 +246,10 @@ class AppRouter {
   }
 
   static void pop<T extends Object?>([T? result]) {
-    // ✅ بررسی می‌کنیم که آیا صفحه قبلی در استک وجود دارد یا خیر
     try {
       if (router.canPop()) {
         router.pop(result);
       } else {
-        // اگر چیزی برای pop وجود نداشت، به لاگین برگردیم
         router.go('/login');
       }
     } catch (e) {
