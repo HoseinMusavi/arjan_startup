@@ -31,6 +31,14 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	
+	<!-- ✅ دسترسی موقعیت مکانی برای iOS -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>برای نمایش موقعیت شما روی نقشه به دسترسی نیاز داریم</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>برای نمایش موقعیت شما روی نقشه به دسترسی نیاز داریم</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>برای نمایش موقعیت شما روی نقشه به دسترسی نیاز داریم</string>
+	
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -49,7 +57,7 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	
-	<!-- ✅ این خط رو اضافه کنید تا اسپلش همیشه نمایش داده بشه -->
+	<!-- ✅ اسپلش اسکرین -->
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIImageName</key>

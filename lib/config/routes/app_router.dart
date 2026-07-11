@@ -16,7 +16,7 @@ import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/points_page.dart';
 import '../../features/profile/presentation/pages/point_details_page.dart';
 import '../../features/profile/presentation/pages/addresses_page.dart';
-import '../../features/profile/presentation/pages/add_edit_address_page.dart';
+import '../../features/profile/presentation/pages/address_picker_map_page.dart'; // ✅ تغییر
 import '../../features/profile/presentation/pages/notifications_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
 import '../../features/cart/presentation/pages/cart_page.dart';
@@ -40,7 +40,7 @@ class AppRouter {
       debugPrint('📍 [ROUTER] مسیر: $location');
       debugPrint('🔐 [ROUTER] وضعیت لاگین: $isLoggedIn');
       
-      // ✅ اگر در splash هستیم، هیچ redirect انجام نده (اجازه بده اسپلش نمایش داده بشه)
+      // ✅ اگر در splash هستیم، هیچ redirect انجام نده
       if (location == '/splash') {
         debugPrint('⏳ [ROUTER] در صفحه اسپلش، صبر می‌کنیم...');
         return null;
@@ -149,6 +149,7 @@ class AppRouter {
         ],
       ),
       
+      // ============ مسیرهای زیرمجموعه پروفایل ============
       GoRoute(
         path: '/profile/edit',
         name: 'edit-profile',
@@ -174,10 +175,11 @@ class AppRouter {
         name: 'addresses',
         builder: (context, state) => const AddressesPage(),
       ),
+      // ✅ تغییر: استفاده از AddressPickerMapPage
       GoRoute(
         path: '/profile/addresses/add',
         name: 'add-address',
-        builder: (context, state) => const AddEditAddressPage(),
+        builder: (context, state) => const AddressPickerMapPage(),
       ),
       GoRoute(
         path: '/profile/notifications',
@@ -237,6 +239,7 @@ class AppRouter {
     ),
   );
 
+  // ============ متدهای کمکی ============
   static void goTo(String location, {Object? extra}) {
     router.go(location, extra: extra);
   }
