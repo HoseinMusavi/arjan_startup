@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../../../core/network/dio_client.dart';
 import '../models/settings_dto.dart';
 
@@ -14,9 +16,15 @@ class ConfigRepositoryImpl implements ConfigRepository {
   Future<SettingsResponse> getSettings() async {
     try {
       final response = await _dioClient.get("/getSettings");
-      // تبدیل جیسون خام به مدل دارت
-      return SettingsResponse.fromJson(response.data);
+      debugPrint('📡 [ConfigRepo] پاسخ دریافت شد');
+      
+      // ✅ تبدیل جیسون خام به مدل دارت
+      final settingsResponse = SettingsResponse.fromJson(response.data);
+      debugPrint('✅ [ConfigRepo] تعداد دسته‌بندی‌ها: ${settingsResponse.cuisines.length}');
+      
+      return settingsResponse;
     } catch (e) {
+      debugPrint('❌ [ConfigRepo] خطا: $e');
       rethrow;
     }
   }

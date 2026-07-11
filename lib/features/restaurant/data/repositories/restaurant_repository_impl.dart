@@ -1,0 +1,142 @@
+import 'dart:developer';
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
+import '../../domain/repositories/restaurant_repository.dart';
+import '../datasources/restaurant_remote_source.dart';
+import '../models/restaurant_info_dto.dart';
+import '../models/menu_category_dto.dart';
+import '../models/menu_item_dto.dart';
+import '../models/item_details_dto.dart';
+import '../models/search_category_item_dto.dart';
+import '../models/merchant_about_dto.dart';
+import '../models/review_dto.dart';
+
+class RestaurantRepositoryImpl implements RestaurantRepository {
+  final RestaurantRemoteDataSource _dataSource;
+
+  RestaurantRepositoryImpl(this._dataSource);
+
+  @override
+  Future<Either<Failure, RestaurantInfoDto>> getRestaurantInfo(String merchantId, double lat, double lng) async {
+    log('🔄 [Repo] درخواست اطلاعات رستوران به دیتاسورس ارسال شد.');
+    try {
+      final result = await _dataSource.getRestaurantInfo(merchantId, lat, lng);
+      if (result != null) return Right(result);
+      return Left(ServerFailure("اطلاعات رستوران یافت نشد"));
+    } catch (e) {
+      log('❌ [Repo] خطا: $e');
+      return Left(ServerFailure("خطای ارتباط با سرور"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<MenuCategoryDto>>> getMenuCategories(String merchantId, double lat, double lng) async {
+    log('🔄 [Repo] درخواست دسته‌بندی‌های منو به دیتاسورس ارسال شد.');
+    try {
+      final result = await _dataSource.getMenuCategories(merchantId, lat, lng);
+      return Right(result);
+    } catch (e) {
+      log('❌ [Repo] خطا: $e');
+      return Left(ServerFailure("خطای ارتباط با سرور در دریافت منو"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<MenuItemDto>>> getItemsByCategory(String merchantId, String categoryId, double lat, double lng) async {
+    log('🔄 [Repo] درخواست غذاهای منو به دیتاسورس ارسال شد.');
+    try {
+      final result = await _dataSource.getItemsByCategory(merchantId, categoryId, lat, lng);
+      return Right(result);
+    } catch (e) {
+      log('❌ [Repo] خطا: $e');
+      return Left(ServerFailure("خطای ارتباط با سرور در دریافت غذاها"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ItemDetailsDto>> getItemDetails(String merchantId, String itemId, String categoryId, double lat, double lng) async {
+    log('🔄 [Repo] درخواست جزئیات غذا به دیتاسورس ارسال شد.');
+    try {
+      final result = await _dataSource.getItemDetails(merchantId, itemId, categoryId, lat, lng);
+      if (result != null) return Right(result);
+      return Left(ServerFailure("جزئیات غذا یافت نشد"));
+    } catch (e) {
+      log('❌ [Repo] خطا: $e');
+      return Left(ServerFailure("خطای ارتباط با سرور در دریافت جزئیات غذا"));
+    }
+  }
+
+  @override
+  Future<Either<Failure, SearchCategoryResponseDto>> searchFoodCategory({
+    required String query,
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.searchFoodCategory(
+        query: query,
+        merchantId: merchantId,
+        lat: lat,
+        lng: lng,
+      );
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure('خطا در جستجوی منو: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, MerchantAboutDto>> getMerchantAbout({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.getMerchantAbout(
+        merchantId: merchantId,
+        lat: lat,
+        lng: lng,
+      );
+      if (result.isSuccess) {
+        return Right(result);
+      } else {
+        return Left(ServerFailure(result.msg));
+      }
+    } catch (e) {
+      return Left(ServerFailure('خطا در دریافت اطلاعات رستوران: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ReviewListResponseDto>> getReviews({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.getReviews(merchantId: merchantId, lat: lat, lng: lng);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure('خطا در دریافت نظرات: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> toggleFavorite({
+    required String merchantId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final result = await _dataSource.toggleFavorite(merchantId: merchantId, lat: lat, lng: lng);
+      if (result['success'] == true) {
+        return Right(result);
+      } else {
+        return Left(ServerFailure(result['message'] ?? 'خطا در تغییر وضعیت علاقه‌مندی'));
+      }
+    } catch (e) {
+      return Left(ServerFailure('خطا در تغییر علاقه‌مندی: ${e.toString()}'));
+    }
+  }
+}

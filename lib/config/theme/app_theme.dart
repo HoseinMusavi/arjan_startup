@@ -1,109 +1,209 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class AppTheme {
-  // --- پالت رنگی مدرن و گرم ---
-  static const Color primaryColor = Color(0xFFFF5722);
-  static const Color primaryDark = Color(0xFFE64A19);
-  static const Color secondaryColor = Color(0xFF263238);
-  static const Color scaffoldBackground = Color(0xFFF9F9F9);
+  static const Color primaryColor = Color(0xFFFF7A00);
+  static const Color primaryLight = Color(0xFFFF9F3E);
+  static const Color primaryDark = Color(0xFFE56600);
+  static const Color secondaryColor = Color(0xFF4CAF50);
+  static const Color accentColor = Color(0xFF2196F3);
+  
+  static const Color successColor = Color(0xFF4CAF50);
+  static const Color warningColor = Color(0xFFFFC107);
+  static const Color errorColor = Color(0xFFEF5350);
+  static const Color infoColor = Color(0xFF2196F3);
+  
+  static const Color backgroundColor = Color(0xFFF8F9FA);
   static const Color surfaceColor = Colors.white;
-  static const Color errorColor = Color(0xFFD32F2F);
-
+  static const Color cardColor = Colors.white;
+  
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF6B6B6B);
+  static const Color textHint = Color(0xFF9E9E9E);
+  static const Color textDisabled = Color(0xFFBDBDBD);
+  
+  static const Color dividerColor = Color(0xFFEEEEEE);
+  static const Color borderColor = Color(0xFFE0E0E0);
+  
+  static const double defaultBorderRadius = 16;
+  static const double smallBorderRadius = 12;
+  static const double largeBorderRadius = 24;
+  
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'AppFont',
-
-      // 1. تنظیمات رنگ‌بندی کلی
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
+      brightness: Brightness.light,
+      primaryColor: primaryColor,
+      scaffoldBackgroundColor: backgroundColor,
+      colorScheme: const ColorScheme.light(
         primary: primaryColor,
-        onPrimary: Colors.white,
         secondary: secondaryColor,
-        onSecondary: Colors.white,
         surface: surfaceColor,
-        onSurface: secondaryColor,
         error: errorColor,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: textPrimary,
+        onError: Colors.white,
       ),
-
-      scaffoldBackgroundColor: scaffoldBackground,
-
-      // 2. تنظیمات AppBar
+      
+      fontFamily: 'Vazir',
+      
       appBarTheme: const AppBarTheme(
-        backgroundColor: surfaceColor,
         elevation: 0,
         centerTitle: true,
-        scrolledUnderElevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-        iconTheme: IconThemeData(color: secondaryColor),
+        backgroundColor: surfaceColor,
+        foregroundColor: textPrimary,
         titleTextStyle: TextStyle(
-          fontFamily: 'AppFont',
-          color: secondaryColor,
+          fontFamily: 'Vazir',
           fontSize: 18,
           fontWeight: FontWeight.bold,
+          color: textPrimary,
+        ),
+        iconTheme: IconThemeData(color: textPrimary),
+      ),
+      
+      // ✅ اصلاح: استفاده از TabBarThemeData به جای TabBarTheme
+      tabBarTheme: const TabBarThemeData(
+        labelColor: primaryColor,
+        unselectedLabelColor: textSecondary,
+        indicatorColor: primaryColor,
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+        labelStyle: TextStyle(
+          fontFamily: 'Vazir',
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: 'Vazir',
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
         ),
       ),
-
-      // 3. تایپوگرافی
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: secondaryColor),
-        displayMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: secondaryColor),
-        headlineMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: secondaryColor),
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: secondaryColor),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Color(0xFF616161)),
-      ),
-
-      // 4. دکمه‌ها
+      
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
-          elevation: 4,
-          shadowColor: primaryColor.withValues(alpha: 0.4),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+          disabledBackgroundColor: Colors.grey.shade300,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(smallBorderRadius),
+          ),
           textStyle: const TextStyle(
-            fontFamily: 'AppFont',
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontFamily: 'Vazir',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+      
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryColor,
+          side: BorderSide(color: primaryColor.withValues(alpha: 0.3)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(smallBorderRadius),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Vazir',
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        ),
+      ),
+      
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primaryColor,
+          textStyle: const TextStyle(
+            fontFamily: 'Vazir',
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
-
-      // 5. فیلدهای ورودی
+      
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(smallBorderRadius),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+          borderRadius: BorderRadius.circular(smallBorderRadius),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: primaryColor, width: 2),
+          borderRadius: BorderRadius.circular(smallBorderRadius),
+          borderSide: const BorderSide(color: primaryColor, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(smallBorderRadius),
+          borderSide: const BorderSide(color: errorColor),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: const TextStyle(color: textHint, fontSize: 13, fontFamily: 'Vazir'),
+        labelStyle: const TextStyle(fontFamily: 'Vazir', fontSize: 14),
+        errorStyle: const TextStyle(fontFamily: 'Vazir', fontSize: 12),
+      ),
+      
+      // ✅ اصلاح: استفاده از CardThemeData به جای CardTheme
+      cardTheme: const CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(defaultBorderRadius)),
+        ),
+        color: cardColor,
+        margin: EdgeInsets.zero,
+      ),
+      
+      dividerTheme: const DividerThemeData(
+        color: dividerColor,
+        thickness: 1,
+        space: 1,
+      ),
+      
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(smallBorderRadius),
+        ),
+        contentTextStyle: const TextStyle(
+          fontFamily: 'Vazir',
+          fontSize: 14,
         ),
       ),
-
-      // 6. کارت‌ها (تغییر نام به CardThemeData)
-      // اگر همچنان ارور داد، ممکن است در نسخه شما این کلاس وجود نداشته باشد،
-      // در آن صورت کافیست کل بخش cardTheme را حذف کنید یا از CardTheme عادی استفاده کنید.
-      cardTheme: const CardThemeData( 
-        color: surfaceColor,
-        elevation: 2,
-        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+      
+      // ✅ اصلاح: استفاده از DialogThemeData به جای DialogTheme
+      dialogTheme: const DialogThemeData(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20))),
-      ).copyWith(
-        shadowColor: Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.all(Radius.circular(defaultBorderRadius)),
+        ),
+        titleTextStyle: TextStyle(
+          fontFamily: 'Vazir',
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: textPrimary,
+        ),
+        contentTextStyle: TextStyle(
+          fontFamily: 'Vazir',
+          fontSize: 14,
+          color: textSecondary,
+        ),
+      ),
+      
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(defaultBorderRadius)),
+        ),
+      ),
+      
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: primaryColor,
+        linearMinHeight: 3,
       ),
     );
   }
